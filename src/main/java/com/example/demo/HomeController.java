@@ -18,11 +18,11 @@ public class HomeController {
         return "index";
     }
 
-    public ModelAndView home1() throws Exception{
-        System.out.println("HomeController 실행2");
-        ModelAndView mv = new ModelAndView();
-        System.out.println("HomeController 실행2-1");
-        mv.setViewName("index");
-        return mv;
-    }
+//    public ModelAndView home1() throws Exception{
+//        System.out.println("HomeController 실행2");
+//        ModelAndView mv = new ModelAndView();
+//        System.out.println("HomeController 실행2-1");
+//        mv.setViewName("index");
+//        return mv;
+//    }
 }
