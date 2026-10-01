@@ -1,0 +1,65 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.1'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.graalvm.buildtools.native' version '1.1.8'
+	id 'war'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring 웹 MVC
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	//compileOnly 'org.projectlombok:lombok'
+	//annotationProcessor 'org.projectlombok:lombok'
+	//annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	//testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	//testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	// JSP 컴파일
+	implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
+	// JSTL (JSP 태그 라이브러리)
+	// implementation 'javax.servlet:jstl:1.2'
+	// Spring MVC 웹 개발
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// 설정 메타데이터
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+	// JSTL (Spring Boot 4 = Jakarta)
+	implementation 'jakarta.servlet:jakarta.servlet-api'
+	implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api'
+	implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl'
+
+	// MySQL
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// 테스트
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// tomcat
+	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
