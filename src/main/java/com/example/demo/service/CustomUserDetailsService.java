@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.CustomUserDetails;
-import com.example.demo.entity.User;
+import com.example.demo.entity.UserEntity;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     // username을 이용해 사용자 정보를 조회
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<User> userOptional = userRepository.findByUsername(username);
+        Optional<UserEntity> userOptional = userRepository.findByUsername(username);
 
         // 사용자가 존재하지 않을 경우 예외 throw
 //        User user = userOptional.orElseThrow(() -> {
@@ -38,7 +38,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("사용자를 찾을 수 없습니다.");
         }
 
-        User user = new User();
+        UserEntity user = new UserEntity();
         user.setId(123L);
         user.setUsername("123");
         // 암호화

@@ -1,7 +1,7 @@
 package com.example.demo.config;
 
 import com.example.demo.entity.CustomUserDetails;
-import com.example.demo.entity.User;
+import com.example.demo.entity.UserEntity;
 import com.example.demo.entity.UserRole;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -75,7 +75,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 // 인증이 필요합니다
                 String username = jwtUtil.getUsername(token);
                 UserRole role = UserRole.valueOf(jwtUtil.getRole(token));
-                User user = User.builder()
+                UserEntity user = UserEntity.builder()
                         .username(username)
                         .password("N/A")
                         .role(role)

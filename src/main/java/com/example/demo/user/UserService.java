@@ -1,7 +1,7 @@
 package com.example.demo.user;
 
 import com.example.demo.dto.SignUpDto;
-import com.example.demo.entity.User;
+import com.example.demo.entity.UserEntity;
 import com.example.demo.entity.UserRole;
 import com.example.demo.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -26,7 +26,7 @@ public class UserService {
     @Transactional
     public void signUp(SignUpDto signUpDto) {
         validateDuplicateUsername(signUpDto.getUsername());
-        User user = createUserEntity(signUpDto);
+        UserEntity user = createUserEntity(signUpDto);
         userRepository.save(user);
     }
 
@@ -43,8 +43,8 @@ public class UserService {
     /**
      * User 엔티티 생성 (비밀번호 암호화 적용)
      */
-    private User createUserEntity(SignUpDto signUpDto) {
-        return User.builder()
+    private UserEntity createUserEntity(SignUpDto signUpDto) {
+        return UserEntity.builder()
                 .username(signUpDto.getUsername())
                 .password(bCryptPasswordEncoder.encode(signUpDto.getPassword())) // 비밀번호 암호화
                 .role(UserRole.ROLE_ADMIN) // 기본 권한 부여 (추후 변경 가능)

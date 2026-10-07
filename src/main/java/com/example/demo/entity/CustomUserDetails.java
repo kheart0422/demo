@@ -11,21 +11,21 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
-    private final User user;
+    private final UserEntity userEntity;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(user.getRole().toString()));
+        return Collections.singletonList(new SimpleGrantedAuthority(userEntity.getRole().toString()));
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return userEntity.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return user.getUsername();
+        return userEntity.getUsername();
     }
 
     @Override
