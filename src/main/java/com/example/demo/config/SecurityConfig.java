@@ -92,7 +92,7 @@ public class SecurityConfig {
                                 DispatcherType.ERROR
                         ).permitAll()
                         // 로그인, 회원가입, 홈은 누구나 접근
-                        .requestMatchers("/login", "/signup", "/logout", "/"
+                        .requestMatchers("/login", "/signup", "/signupApi", "/logout", "/"
                                 // DevTools 요청 허용 (개발자 모드일 때 Access Denied 에러남)
                                 , "/.well-known/appspecific/com.chrome.devtools.json").permitAll()
                         // admin 경로는 ADMIN 권한 필요

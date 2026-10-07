@@ -22,6 +22,9 @@ public class UserEntity {
     private String password;
 
     @Column(nullable = false)
+    private String passWordConfirm;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserRole role; // enum 타입을 사용하거나, 단순 String으로 정의 가능
 }
