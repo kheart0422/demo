@@ -49,7 +49,7 @@
                 </div>
 
                 <button type="submit" class="login-button">
-                    로그인2
+                    로그인
                 </button>
             </form>
 

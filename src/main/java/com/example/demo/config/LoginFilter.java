@@ -63,9 +63,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     // 로그인 실패 시
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest req, HttpServletResponse res, AuthenticationException failed) {
+    protected void unsuccessfulAuthentication(HttpServletRequest req, HttpServletResponse res, AuthenticationException failed) throws IOException {
         // 401 Unauthorized 응답
-        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // 회원가입페이지로 이동(signup.jsp)
+        res.sendRedirect(req.getContextPath() + "/signup");
     }
 
 }

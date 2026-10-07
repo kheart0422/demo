@@ -25,7 +25,11 @@ public class JWTUtil {
                 // JWT(io.jsonwebtoken) 라이브러리가 0.12.0 버전 이상으로 업그레이드되면서 API 빌더 구조가 변경되었기 때문에 발생하는 컴파일 에러
                 .verifyWith(secretKey)
                 .build()
-                .parseClaimsJws(token)
+                // 'parseClaimsJws(java.lang.CharSequence)'은(는) 더 이상 사용되지 않습니다
+                // parseClaimsJws(java.lang.CharSequence) 메서드는 JJWT(Java JWT) 라이브러리 0.12.0 버전부터
+                // Deprecated(더 이상 사용되지 않음)되었습니다. 대신 parseSignedClaims(CharSequence) 메서드를 사용
+                // JJWT 라이브러리가 업데이트되면서 JWT의 용어와 구조를 더 명확하게 반영하도록 API가 변경
+                .parseSignedClaims(token)
                 .getPayload()
                 .get("username", String.class);
     }
@@ -35,7 +39,7 @@ public class JWTUtil {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
-                .parseClaimsJws(token)
+                .parseSignedClaims(token)
                 .getPayload()
                 .get("role", String.class);
     }
@@ -45,7 +49,7 @@ public class JWTUtil {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
-                .parseClaimsJws(token)
+                .parseSignedClaims(token)
                 .getPayload()
                 .getExpiration()
                 .before(new Date());

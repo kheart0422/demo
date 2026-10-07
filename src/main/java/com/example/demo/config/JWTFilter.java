@@ -3,6 +3,7 @@ package com.example.demo.config;
 import com.example.demo.entity.CustomUserDetails;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserRole;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -25,8 +26,20 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return "POST".equalsIgnoreCase(request.getMethod())
-                && "/logout".equals(request.getServletPath());
+        return
+            "POST".equalsIgnoreCase(request.getMethod())
+            // && "/logout".equals(request.getServletPath());
+            // 토큰 검증 안함
+            && (
+                    isPath(request, "/")
+                    || isPath(request, "/login")
+                    || isPath(request, "/signup")
+                    || isPath(request, "/logout")
+            );
+    }
+
+    private boolean isPath(HttpServletRequest request, String path) {
+        return path.equals(request.getServletPath());
     }
 
     @Override
@@ -55,48 +68,45 @@ public class JWTFilter extends OncePerRequestFilter {
             }
         }
 
-        try {
-            if (token == null) {
-                filterChain.doFilter(request, response);
+        if (token != null) {
+            try {
+                // 구문 분석(parsing) 과정에서 서명과 만료 여부를 검증합니다. 오래되었거나 유효하지 않은 쿠키
+                // 이 요청은 익명으로 처리해야 합니다. 보안 담당자가 URL을 익명으로 처리할지 여부를 결정합니다.
+                // 인증이 필요합니다
+                String username = jwtUtil.getUsername(token);
+                UserRole role = UserRole.valueOf(jwtUtil.getRole(token));
+                User user = User.builder()
+                        .username(username)
+                        .password("N/A")
+                        .role(role)
+                        .build();
+
+                CustomUserDetails customUserDetails = new CustomUserDetails(user);
+                Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (ExpiredJwtException e) {
+                log.debug("JWT 토큰 만료: {}", e.getMessage());
+                // 즉시 401 응답을 반환하고 메서드를 종료(return)합니다.
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"토큰이 만료되었습니다. 다시 로그인하거나 Refresh 하세요.\"}");
+                return;
+            } catch (Exception e) {
+                // null인 사용자로부터 UserDetails 객체를 생성하지 마십시오. 익명으로 계속 진행하십시오.
+                // permitAll로 설정된 URL은 계속해서 접근 가능하며, 보호 대상 URL은 보안(Security) 기능에 의해 처리됩니다.
+                log.debug("유효하지 않은 JWT: {}", e.getMessage());
+                // 즉시 401 응답을 반환하고 메서드를 종료(return)합니다.
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"토큰이 만료되었습니다. 다시 로그인하거나 Refresh 하세요.\"}");
                 return;
             }
-            // JWT 만료 여부 검증
-            if (jwtUtil.isTokenExpired(token)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT 토큰이 만료되었습니다.");
-                return;
-            }
-
-            // JWT에서 사용자 정보 추출
-            String username = jwtUtil.getUsername(token);
-            UserRole role = UserRole.valueOf(jwtUtil.getRole(token));
-
-            // 인증 객체 생성
-            User user = User.builder()
-                    .username(username)
-                    .password("N/A") // 비밀번호는 JWT 기반 인증이므로 사용하지 않음
-                    .role(role)
-                    .build();
-
-            CustomUserDetails customUserDetails = new CustomUserDetails(user);
-            Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
-
-            // SecurityContext에 인증 정보 저장 (Stateless 모드이므로 요청 종료 시 소멸)
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-
-        } catch (Exception e) {
-            // log.error("JWT 필터 처리 중 오류 발생: {}", e.getMessage(), e);
-            //response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "유효하지 않은 토큰입니다.");
-
-            log.error("JWT 필터 처리 중 오류 발생: {}", e.getMessage(), e);
-            response.sendError(
-                    HttpServletResponse.SC_UNAUTHORIZED,
-                    "유효하지 않은 토큰입니다."
-            );
-            return;
         }
-
+        // 별도의 요청이나 디스패치가 거부되거나 요청된 값 확인
+        log.info("method={} uri={} servletPath={} dispatcher={}", request.getMethod(), request.getRequestURI(), request.getServletPath(), request.getDispatcherType());
         filterChain.doFilter(request, response);
     }
 

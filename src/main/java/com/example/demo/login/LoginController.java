@@ -17,8 +17,12 @@ public class LoginController {
 
     @GetMapping("/login")
     public String loginPage(){
-
         return "login/login";
+    }
+
+    @GetMapping("/signup")
+    public String signupPage(){
+        return "login/signup";
     }
 
     @PostMapping("/logout")
