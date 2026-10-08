@@ -73,9 +73,13 @@ dependencies {
 
 	// 엔티티 의존성 추가
 	// JPA 의존성 (필수)
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+//	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	// 테스트/개발용 H2 데이터베이스 (사용 중인 DB 드라이버가 있다면 그것으로 유지)
 	runtimeOnly 'com.h2database:h2'
+
+	// MyBatis
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+	implementation 'com.mysql:mysql-connector-j' // 사용하는 DB 드라이버로 변경
 }
 
 tasks.named('test') {

@@ -3,23 +3,36 @@ package com.example.demo.user;
 import com.example.demo.dto.SignUpDto;
 import com.example.demo.entity.UserEntity;
 import com.example.demo.entity.UserRole;
-import com.example.demo.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import com.example.demo.mapper.UserMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
 
-    private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final PasswordEncoder passwordEncoder;
+    @Autowired private UserMapper userMapper;
+
+    @PostConstruct
+    public void test1(){
+        List<Map<String, Object>> users = userMapper.selectAllUsers();
+
+        users.forEach(item->{
+            System.out.println("USER:" + item);
+        });
+    }
 
     /**
      * 회원가입 기능
@@ -60,10 +73,10 @@ public class UserService {
      * 중복된 username 체크
      */
     private void validateDuplicateUsername(String username) {
-        if (userRepository.existsByUsername(username)) {
-            log.warn("중복된 아이디 입니다: {}" , username);
-            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
-        }
+//        if (userRepository.existsByUsername(username)) {
+//            log.warn("중복된 아이디 입니다: {}" , username);
+//            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
+//        }
     }
 
     /**
