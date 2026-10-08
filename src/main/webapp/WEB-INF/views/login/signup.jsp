@@ -1,96 +1,119 @@
-<%--
-  Created by IntelliJ IDEA.
-  User: heart
-  Date: 26. 10. 6.
-  Time: 오후 6:01
-  To change this template use File | Settings | File Templates.
---%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<html>
-    <head>
-        <title>Signup</title>
-    </head>
-    <body>
-        <div>회원가입</div>
-        <div id="wrap" class="wrapper">
-            <form method ="post" name="signupForm" id="signupForm">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>회원가입 | 파일 보관함</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/vendor/bootstrap/css/bootstrap.min.css">
+</head>
+<body class="bg-body-tertiary">
+<main class="container min-vh-100 d-flex align-items-center justify-content-center py-5">
+    <div class="card border-0 shadow-sm rounded-4 w-100" style="max-width: 480px;">
+        <div class="card-body p-4 p-md-5">
+            <div class="mb-4">
+                <span class="badge text-bg-primary rounded-pill mb-3">파일 보관함</span>
+                <h1 class="h3 fw-bold mb-2">새 계정 만들기</h1>
+                <p class="text-body-secondary mb-0">가입 정보를 입력해 계정을 생성하세요.</p>
+            </div>
 
-                <div class="userInput">
-                    <!-- 아이디 입력 -->
-                    <h3 class="list">아이디<span id="idError"></span></h3>
-                    <span class="box int_id" >
-                        <input type="text" id="username" class="int check" maxlength="20">
-                    </span>
+            <form method="post" name="signupForm" id="signupForm" novalidate>
+                <div class="mb-3">
+                    <label for="username" class="form-label">아이디</label>
+                    <input type="text" id="username" class="form-control form-control-lg" maxlength="20"
+                           autocomplete="username" placeholder="사용할 아이디를 입력하세요" required>
+                    <div class="invalid-feedback">아이디를 입력해 주세요.</div>
                 </div>
-                <div class="userInput">
-                    <!-- 비밀번호 입력 -->
-                    <h3 class="list">비밀번호<span id="pwError"></span></h3>
-                    <span class="box int_id">
-                        <input type="password" id="password" class="int check" maxlength="20">
-                    </span>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">비밀번호</label>
+                    <input type="password" id="password" class="form-control form-control-lg" maxlength="20"
+                           autocomplete="new-password" placeholder="비밀번호를 입력하세요" required>
+                    <div class="invalid-feedback">비밀번호를 입력해 주세요.</div>
                 </div>
-                <!-- 비밀번호 재확인 입력 -->
-                <div class="userInput">
-                    <h3 class="list">
-                        비밀번호 재확인<span id="pwCheckError"></span>
-                    </h3>
-                    <span class="box int_id">
-                        <input type="password" id="passwordConfirm" class="int check" maxlength="20">
-                    </span>
+
+                <div class="mb-4">
+                    <label for="passwordConfirm" class="form-label">비밀번호 확인</label>
+                    <input type="password" id="passwordConfirm" class="form-control form-control-lg" maxlength="20"
+                           autocomplete="new-password" placeholder="비밀번호를 한 번 더 입력하세요" required>
+                    <div class="invalid-feedback">비밀번호를 다시 입력해 주세요.</div>
                 </div>
-                <div>
-                    <input type="submit" value="회원가입" href="${pageContext.request.contextPath}/signupApi"/>
-                </div>
+
+                <div id="signupMessage" class="alert d-none" role="alert"></div>
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="signupButton">회원가입</button>
             </form>
 
-            <script>
-                document.getElementById("signupForm").addEventListener("submit", async function(e) {
-
-                    // form 기본 제출 막기
-                    e.preventDefault();
-
-                    const username = document.getElementById("username").value.trim();
-                        const password = document.getElementById("password").value.trim();
-                        const passwordConfirm = document.getElementById("passwordConfirm").value.trim();
-
-                        // 빈 값(또는 공백만 입력된 경우) 체크
-                        if (!username || !password || !passwordConfirm) {
-                            alert(" 모든 항목을 입력해 주세요.");
-                            return;
-                        }
-
-                        // 비밀번호와 비밀번호 확인 일치 여부 사전 체크 (선택 사항)
-                        if (password !== passwordConfirm) {
-                            alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
-                            return;
-                        }
-
-                        const data = { username, password, passwordConfirm };
-
-                    try {
-                        const response = await fetch("/signupApi", {
-                            method: "POST",
-                            headers: {"Content-Type": "application/json"},
-                            body: JSON.stringify(data)
-                        });
-
-                        const message = await response.text();
-
-                        if (response.ok) {
-                            console.error(message);
-                            alert(message);
-                            location.href = "/login";
-                        } else {
-                            alert(message);
-                        }
-
-                    } catch (error) {
-                        alert("회원가입 처리 중 오류가 발생했습니다.");
-                        console.error(error);
-                    }
-                });
-            </script>
-
+            <p class="text-center text-body-secondary mt-4 mb-0">
+                이미 계정이 있으신가요?
+                <a class="link-primary fw-semibold text-decoration-none" href="${pageContext.request.contextPath}/login">로그인</a>
+            </p>
         </div>
-    </body>
+    </div>
+</main>
+
+<script>
+    const contextPath = "${pageContext.request.contextPath}";
+    const signupForm = document.getElementById("signupForm");
+    const signupMessage = document.getElementById("signupMessage");
+    const signupButton = document.getElementById("signupButton");
+
+    signupForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        signupForm.classList.add("was-validated");
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        const passwordConfirm = document.getElementById("passwordConfirm").value;
+
+        const usernameInput = document.getElementById("username");
+        const confirmInput = document.getElementById("passwordConfirm");
+        usernameInput.setCustomValidity(username ? "" : "아이디를 입력해 주세요.");
+        confirmInput.setCustomValidity("");
+        confirmInput.classList.remove("is-invalid");
+
+        if (!signupForm.checkValidity()) {
+            signupForm.reportValidity();
+            return;
+        }
+
+        if (password !== passwordConfirm) {
+            confirmInput.setCustomValidity("비밀번호가 일치하지 않습니다.");
+            confirmInput.classList.add("is-invalid");
+            confirmInput.reportValidity();
+            return;
+        }
+        document.getElementById("passwordConfirm").setCustomValidity("");
+        document.getElementById("passwordConfirm").classList.remove("is-invalid");
+
+        signupButton.disabled = true;
+        signupButton.textContent = "가입 처리 중...";
+        signupMessage.className = "alert d-none";
+
+        try {
+            const response = await fetch(contextPath + "/signupApi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password, passwordConfirm })
+            });
+            const message = await response.text();
+
+            signupMessage.textContent = message;
+            signupMessage.className = "alert " + (response.ok ? "alert-success" : "alert-danger");
+
+            if (response.ok) {
+                setTimeout(function () {
+                    location.href = contextPath + "/login";
+                }, 900);
+            }
+        } catch (error) {
+            signupMessage.textContent = "회원가입 처리 중 오류가 발생했습니다.";
+            signupMessage.className = "alert alert-danger";
+        } finally {
+            signupButton.disabled = false;
+            signupButton.textContent = "회원가입";
+        }
+    });
+</script>
+<script src="${pageContext.request.contextPath}/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>

@@ -91,6 +91,12 @@ public class SecurityConfig {
                                 DispatcherType.FORWARD,
                                 DispatcherType.ERROR
                         ).permitAll()
+                        .requestMatchers(
+                                "/vendor/**",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
                         // 로그인, 회원가입, 홈은 누구나 접근
                         .requestMatchers("/login", "/signup", "/signupApi", "/logout", "/"
                                 // DevTools 요청 허용 (개발자 모드일 때 Access Denied 에러남)

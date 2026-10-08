@@ -35,70 +35,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>업로드 파일</title>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; color: #202124; }
-        body { display: flex; flex-direction: column; }
-        header { flex: 0 0 auto; min-height: 72px; padding: 14px 28px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e5e7eb; }
-        header h1 { margin: 0 auto 0 0; font-size: 20px; }
-        button, .upload-label { border: 0; border-radius: 6px; padding: 10px 16px; background: #2563eb; color: white; cursor: pointer; font-size: 14px; }
-        .logout button { background: #6b7280; }
-        main { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 28px 24px; }
-        .table-wrap { max-width: 1000px; margin: 0 auto; padding-top: 24px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid #e5e7eb; }
-        thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; box-shadow: 0 1px 0 #e5e7eb; }
-        .empty { padding: 56px 16px; text-align: center; color: #6b7280; }
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 22px 0; }
-        .pagination a { color: #2563eb; text-decoration: none; }
-        .pagination .page-number { min-width: 28px; text-align: center; }
-        .pagination .current { color: #202124; font-weight: 700; }
-        .pagination .disabled { color: #9ca3af; pointer-events: none; }
-        footer { flex: 0 0 auto; padding: 16px 28px; border-top: 1px solid #e5e7eb; color: #6b7280; text-align: center; }
-        #fileInput { display: none; }
-        @media (max-width: 600px) { header, main { padding-left: 14px; padding-right: 14px; } th, td { padding: 11px 8px; font-size: 14px; } }
-    </style>
+    <title>파일 보관함</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/vendor/bootstrap/css/bootstrap.min.css">
 </head>
-<body>
-<header>
-    <h1>업로드 파일</h1>
-    <form action="${pageContext.request.contextPath}/main/upload" method="post" enctype="multipart/form-data" id="uploadForm">
-        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
-        <input id="fileInput" type="file" name="file" required onchange="document.getElementById('uploadForm').submit()">
-        <label class="upload-label" for="fileInput">파일 업로드</label>
-    </form>
-    <form class="logout" action="${pageContext.request.contextPath}/logout" method="post">
-        <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
-        <button type="submit">로그아웃</button>
-    </form>
-</header>
-<main>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>파일이름</th><th>용량</th><th>파일 업로드일</th></tr></thead>
+<body class="bg-body-tertiary">
+<nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
+    <div class="container py-2">
+        <a class="navbar-brand fw-bold text-primary" href="${pageContext.request.contextPath}/main">파일 보관함</a>
+        <div class="d-flex align-items-center gap-2">
+            <form action="${pageContext.request.contextPath}/main/upload" method="post" enctype="multipart/form-data" id="uploadForm" class="m-0">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
+                <input id="fileInput" class="d-none" type="file" name="file" required onchange="document.getElementById('uploadForm').submit()">
+                <label class="btn btn-primary" for="fileInput">파일 업로드</label>
+            </form>
+            <form action="${pageContext.request.contextPath}/logout" method="post" class="m-0">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
+                <button type="submit" class="btn btn-outline-secondary">로그아웃</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4 py-lg-5">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-2 mb-4">
+        <div>
+            <p class="text-primary fw-semibold small text-uppercase mb-1">내 공간</p>
+            <h1 class="h2 fw-bold mb-1">업로드 파일</h1>
+            <p class="text-body-secondary mb-0">파일을 한곳에서 확인하고 관리하세요.</p>
+        </div>
+        <span class="badge rounded-pill text-bg-light border text-secondary px-3 py-2">총 <%= sampleFiles.size() %>개</span>
+    </div>
+
+    <section class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 px-3 px-md-4 pt-4 pb-3">
+            <h2 class="h5 fw-semibold mb-0">파일 목록</h2>
+        </div>
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th class="ps-3 ps-md-4 py-3">파일 이름</th><th class="py-3">용량</th><th class="py-3">업로드 날짜</th></tr>
+            </thead>
             <tbody>
             <c:choose>
-                <c:when test="${empty files}"><tr><td colspan="3" class="empty">업로드한 파일이 없습니다.</td></tr></c:when>
+                <c:when test="${empty files}"><tr><td colspan="3" class="text-center text-body-secondary py-5">업로드한 파일이 없습니다.</td></tr></c:when>
                 <c:otherwise>
                     <c:forEach var="file" items="${files}">
-                        <tr><td><c:out value="${file.name}" /></td><td><c:out value="${file.sizeText}" /></td><td><c:out value="${file.uploadedAtText}" /></td></tr>
+                        <tr>
+                            <td class="ps-3 ps-md-4 fw-medium"><c:out value="${file.name}" /></td>
+                            <td class="text-body-secondary"><c:out value="${file.sizeText}" /></td>
+                            <td class="text-body-secondary"><c:out value="${file.uploadedAtText}" /></td>
+                        </tr>
                     </c:forEach>
                 </c:otherwise>
             </c:choose>
             </tbody>
         </table>
+        </div>
         <c:if test="${totalPages > 1}">
-            <nav class="pagination" aria-label="파일 목록 페이지">
-                <a class="${currentPage <= 1 ? 'disabled' : ''}" href="?page=${currentPage - 1}">이전</a>
+            <nav class="py-4" aria-label="파일 목록 페이지">
+                <ul class="pagination justify-content-center mb-0">
+                <li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="?page=${currentPage - 1}">이전</a></li>
                 <c:forEach var="pageNumber" begin="${pageGroupStart}" end="${pageGroupEnd}">
-                    <a class="page-number ${pageNumber == currentPage ? 'current' : ''}" href="?page=${pageNumber}" aria-label="${pageNumber}페이지" ${pageNumber == currentPage ? 'aria-current="page"' : ''}>${pageNumber}</a>
+                    <li class="page-item ${pageNumber == currentPage ? 'active' : ''}"><a class="page-link" href="?page=${pageNumber}" aria-label="${pageNumber}페이지" ${pageNumber == currentPage ? 'aria-current="page"' : ''}>${pageNumber}</a></li>
                 </c:forEach>
-                <a class="${currentPage >= totalPages ? 'disabled' : ''}" href="?page=${currentPage + 1}">다음</a>
+                <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="?page=${currentPage + 1}">다음</a></li>
+                </ul>
             </nav>
         </c:if>
-    </div>
+    </section>
 </main>
-<footer>업로드일 기준으로 14일 뒤에 자동 삭제 됩니다.</footer>
+
+<footer class="container pb-4 text-center text-body-secondary small">업로드한 파일은 14일 뒤에 자동 삭제됩니다.</footer>
+<script src="${pageContext.request.contextPath}/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
