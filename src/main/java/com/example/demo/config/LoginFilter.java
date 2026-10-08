@@ -2,21 +2,20 @@ package com.example.demo.config;
 
 import com.example.demo.entity.CustomUserDetails;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.Authentication;
 // Spring Security에서 사용하는 인증 객체
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
 
 @RequiredArgsConstructor
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
@@ -42,14 +41,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         CustomUserDetails customUserDetails = (CustomUserDetails) auth.getPrincipal();
         String username = customUserDetails.getUsername();
 
-        // 사용자 역할 조회
-        Collection<? extends GrantedAuthority> authorities = auth.getAuthorities();
-        Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
-        GrantedAuthority authority = iterator.next();
-
-        String role = authority.getAuthority();
         // 1시간 유효 토큰 생성
-        String token = jwtUtil.createJwt(username, role, 60*60*1000L);
+        String token = jwtUtil.createJwt(username, 60*60*1000L);
         // HTTP 응답 헤더의 Authorization에 JWT
         // 웹에서 토큰 관리 하기 힘들어서 쿠키로 변경
 //        res.addHeader("Authorization", "Bearer " + token);
@@ -63,11 +56,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     // 로그인 실패 시
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest req, HttpServletResponse res, AuthenticationException failed) throws IOException {
-        // 401 Unauthorized 응답
-        // res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        // 회원가입페이지로 이동(signup.jsp)
-        res.sendRedirect(req.getContextPath() + "/signup");
+    protected void unsuccessfulAuthentication(HttpServletRequest req, HttpServletResponse res, AuthenticationException failed) throws IOException, ServletException {
+        Throwable cause = failed;
+        while (cause != null && !(cause instanceof UsernameNotFoundException)) {
+            cause = cause.getCause();
+        }
+
+        String target = req.getContextPath() + "/login";
+        if (cause != null) {
+            target += "?unregistered=true";
+        }
+        else {
+            // 인증 실패를 성공 페이지로 보내면 인증되지 않은 상태로 /main에 진입해 403이 발생합니다.
+            target += "?error=true";
+        }
+        res.sendRedirect(target);
     }
 
 }

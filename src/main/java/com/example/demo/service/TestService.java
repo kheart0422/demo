@@ -14,12 +14,12 @@ public class TestService {
     @Autowired
     private UserMapper userMapper;
 
-    @PostConstruct
-    public void test(){
-        List<Map<String, Object>> users = userMapper.selectAllUsers();
-
-        users.forEach(item->{
-            System.out.println("USER:" + item);
-        });
-    }
+//    @PostConstruct
+//    public void test(){
+//        List<Map<String, Object>> users = userMapper.selectAllUsers();
+//
+//        users.forEach(item->{
+//            System.out.println("USER:" + item);
+//        });
+//    }
 }

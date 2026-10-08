@@ -9,6 +9,19 @@
 <html>
     <head>
         <title>Title</title>
+
+        <!-- 자바스크립트 영역 -->
+        <script type="text/javascript">
+
+            // 미가입 안내는 로그인 실패 후 명시적으로 전달된 경우에만 표시합니다.
+            <% if ("true".equals(request.getParameter("unregistered"))) { %>
+                window.addEventListener("DOMContentLoaded", function () {
+                    alert("회원이 아닙니다. 회원가입 페이지로 이동합니다.");
+                    location.replace("${pageContext.request.contextPath}/signup");
+                });
+            <% } %>
+        </script>
+
     </head>
     <body>
         <h1>login</h1>
@@ -52,16 +65,6 @@
                     로그인
                 </button>
             </form>
-
-            <script>
-                // 폼 제출을 막은 뒤 /main으로 이동하고 있어서, POST /login 요청이 LoginFilter에 도달하지 않음
-                /* document.getElementById('loginForm').addEventListener('submit', function(event) {
-                    event.preventDefault(); // 기본 폼 제출(페이지 새로고침) 막기
-
-                    // 비동기 로그인 처리(fetch/axios) 후 원하는 URL로 이동
-                    window.location.href = '/main'; // 이동할 URL 입력
-                }); */
-            </script>
 
             <div class="signup">
                 계정이 없으신가요?

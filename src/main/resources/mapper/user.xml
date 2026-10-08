@@ -6,4 +6,21 @@
         SELECT *
         FROM webNoteUser
     </select>
+
+    <!-- 로그인 시도한 username 을 조회해서 회원인지 확인 -->
+    <select id="selectLoginUserByUserName" resultType="com.example.demo.entity.UserEntity">
+        <!-- UserMapper.selectLoginUserByUserName -->
+        SELECT
+            username,
+            password
+        FROM webNoteUser
+        WHERE username = #{username}
+    </select>
+
+    <!-- 회원가입 -->
+    <insert id="insertUser">
+        <!-- UserMapper.insertUser -->
+        INSERT INTO webNoteUser(username, password)
+        VALUES(#{username}, #{password})
+    </insert>
 </mapper>

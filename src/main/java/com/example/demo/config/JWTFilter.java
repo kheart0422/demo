@@ -2,7 +2,6 @@ package com.example.demo.config;
 
 import com.example.demo.entity.CustomUserDetails;
 import com.example.demo.entity.UserEntity;
-import com.example.demo.entity.UserRole;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,16 +25,13 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return
-            "POST".equalsIgnoreCase(request.getMethod())
-            // && "/logout".equals(request.getServletPath());
-            // 토큰 검증 안함
-            && (
-                    isPath(request, "/")
-                    || isPath(request, "/login")
-                    || isPath(request, "/signup")
-                    || isPath(request, "/logout")
-            );
+        // 공개 페이지와 공개 API는 요청 메서드와 관계없이 만료 토큰 검증을 건너뜁니다.
+        // permitAll은 인가만 허용하며, 이 필터의 실행 자체를 생략하지는 않습니다.
+        return isPath(request, "/")
+                || isPath(request, "/login")
+                || isPath(request, "/signup")
+                || isPath(request, "/signupApi")
+                || isPath(request, "/logout");
     }
 
     private boolean isPath(HttpServletRequest request, String path) {
@@ -44,17 +40,6 @@ public class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-
-        // Authorization 헤더에서 JWT 토큰 추출
-        // String authorizationHeader = request.getHeader("Authorization");
-
-//        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-//            filterChain.doFilter(request, response);
-//            return;
-//        }
-//
-//        // "Bearer " 이후의 토큰 값만 추출
-//        String token = authorizationHeader.substring(7);
 
         String token = null;
         Cookie[] cookies = request.getCookies();
@@ -74,11 +59,9 @@ public class JWTFilter extends OncePerRequestFilter {
                 // 이 요청은 익명으로 처리해야 합니다. 보안 담당자가 URL을 익명으로 처리할지 여부를 결정합니다.
                 // 인증이 필요합니다
                 String username = jwtUtil.getUsername(token);
-                UserRole role = UserRole.valueOf(jwtUtil.getRole(token));
                 UserEntity user = UserEntity.builder()
                         .username(username)
                         .password("N/A")
-                        .role(role)
                         .build();
 
                 CustomUserDetails customUserDetails = new CustomUserDetails(user);
@@ -89,24 +72,30 @@ public class JWTFilter extends OncePerRequestFilter {
                 }
             } catch (ExpiredJwtException e) {
                 log.debug("JWT 토큰 만료: {}", e.getMessage());
-                // 즉시 401 응답을 반환하고 메서드를 종료(return)합니다.
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"토큰이 만료되었습니다. 다시 로그인하거나 Refresh 하세요.\"}");
+                continueAsAnonymous(request, response, filterChain);
                 return;
             } catch (Exception e) {
-                // null인 사용자로부터 UserDetails 객체를 생성하지 마십시오. 익명으로 계속 진행하십시오.
-                // permitAll로 설정된 URL은 계속해서 접근 가능하며, 보호 대상 URL은 보안(Security) 기능에 의해 처리됩니다.
                 log.debug("유효하지 않은 JWT: {}", e.getMessage());
-                // 즉시 401 응답을 반환하고 메서드를 종료(return)합니다.
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"토큰이 만료되었습니다. 다시 로그인하거나 Refresh 하세요.\"}");
+                continueAsAnonymous(request, response, filterChain);
                 return;
             }
         }
         // 별도의 요청이나 디스패치가 거부되거나 요청된 값 확인
         log.info("method={} uri={} servletPath={} dispatcher={}", request.getMethod(), request.getRequestURI(), request.getServletPath(), request.getDispatcherType());
+        filterChain.doFilter(request, response);
+    }
+
+    private void continueAsAnonymous(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        SecurityContextHolder.clearContext();
+
+        Cookie expiredCookie = new Cookie("token", "");
+        expiredCookie.setHttpOnly(true);
+        expiredCookie.setPath("/");
+        expiredCookie.setMaxAge(0);
+        response.addCookie(expiredCookie);
+
+        // 만료/손상 토큰만으로 공개 페이지 접근을 막지 않습니다.
+        // 보호 페이지는 다음 Spring Security 인가 단계에서 익명 사용자로 거부됩니다.
         filterChain.doFilter(request, response);
     }
 

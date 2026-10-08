@@ -95,8 +95,6 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/signup", "/signupApi", "/logout", "/"
                                 // DevTools 요청 허용 (개발자 모드일 때 Access Denied 에러남)
                                 , "/.well-known/appspecific/com.chrome.devtools.json").permitAll()
-                        // admin 경로는 ADMIN 권한 필요
-                        .requestMatchers("/admin").hasAuthority("ADMIN")
                         // 그 외 요청은 인증된 사용자만 접근 가능
                         .anyRequest().authenticated())
                 // JWT 필터 추가

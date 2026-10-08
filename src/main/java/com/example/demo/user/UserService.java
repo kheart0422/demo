@@ -2,13 +2,11 @@ package com.example.demo.user;
 
 import com.example.demo.dto.SignUpDto;
 import com.example.demo.entity.UserEntity;
-import com.example.demo.entity.UserRole;
 import com.example.demo.mapper.UserMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,8 +19,8 @@ import java.util.Map;
 @Slf4j
 public class UserService {
 
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final PasswordEncoder passwordEncoder;
+    @Autowired private UserMapper userMapper;
 
     /**
      * 회원가입 기능
@@ -43,30 +41,22 @@ public class UserService {
         // 3. 엔티티 생성 및 사용자 입력 비밀번호 암호화
         UserEntity user = createUserEntity(signUpDto);
         user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
-        // user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
 
-        // 4. 임시로 지정된 ID 세팅 (DB Auto Increment 대용)
-        // user.setId(123L);
-
-        // 5. DB가 없는 상황을 가정한 ID 조건 검사 !username.equals("123")
-        if (!user.getUsername().equals("123")) {
-            throw new IllegalArgumentException("허용되지 않은 회원가입 요청입니다.");
-        }
-
-        log.info("회원가입 완료 - userId : {}", user.getId());
-
-        // 6. DB 저장은 주석 처리 또는 메모리 Repository 활용
-        // userRepository.save(user);
+        // 4. DB 저장
+        userMapper.insertUser(user.getUsername(), user.getPassword());
     }
 
     /**
      * 중복된 username 체크
      */
     private void validateDuplicateUsername(String username) {
-//        if (userRepository.existsByUsername(username)) {
-//            log.warn("중복된 아이디 입니다: {}" , username);
-//            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
-//        }
+        // 회원가입 시 입력한 아이디 확인
+        UserEntity isUser = userMapper.selectLoginUserByUserName(username);
+        // 이미 있을 때
+        if (isUser != null) {
+            log.debug("이미 사용중인 아이디", isUser.getUsername());
+            throw new IllegalArgumentException("이미 존재하는 아이디 입니다.");
+        }
     }
 
     /**
@@ -75,8 +65,7 @@ public class UserService {
     private UserEntity createUserEntity(SignUpDto signUpDto) {
         return UserEntity.builder()
                 .username(signUpDto.getUsername())
-                .password(bCryptPasswordEncoder.encode(signUpDto.getPassword())) // 비밀번호 암호화
-                .role(UserRole.ROLE_ADMIN) // 기본 권한 부여 (추후 변경 가능)
+                .password(passwordEncoder.encode(signUpDto.getPassword()))
                 .build();
     }
 
