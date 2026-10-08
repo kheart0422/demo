@@ -23,16 +23,6 @@ public class UserService {
 
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final PasswordEncoder passwordEncoder;
-    @Autowired private UserMapper userMapper;
-
-    @PostConstruct
-    public void test1(){
-        List<Map<String, Object>> users = userMapper.selectAllUsers();
-
-        users.forEach(item->{
-            System.out.println("USER:" + item);
-        });
-    }
 
     /**
      * 회원가입 기능
