@@ -45,7 +45,7 @@
         <div class="d-flex align-items-center gap-2">
             <form action="${pageContext.request.contextPath}/main/upload" method="post" enctype="multipart/form-data" id="uploadForm" class="m-0">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
-                <input id="fileInput" class="d-none" type="file" name="file" required onchange="document.getElementById('uploadForm').submit()">
+                <input id="fileInput" class="d-none" type="file" name="file" accept=".pdf,application/pdf" required>
                 <label class="btn btn-primary" for="fileInput">파일 업로드</label>
             </form>
             <form action="${pageContext.request.contextPath}/logout" method="post" class="m-0">
@@ -107,5 +107,20 @@
 
 <footer class="container pb-4 text-center text-body-secondary small">업로드한 파일은 14일 뒤에 자동 삭제됩니다.</footer>
 <script src="${pageContext.request.contextPath}/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.getElementById('fileInput').addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        // accept 속성은 파일 선택창의 안내이므로, 선택 후에도 확장자를 확인합니다.
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert('PDF 파일만 업로드할 수 있습니다.');
+            this.value = '';
+            return;
+        }
+
+        // document.getElementById('uploadForm').submit();
+    });
+</script>
 </body>
 </html>

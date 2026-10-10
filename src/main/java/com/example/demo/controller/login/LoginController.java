@@ -1,7 +1,7 @@
-package com.example.demo.login;
+package com.example.demo.controller.login;
 
 import com.example.demo.dto.SignUpDto;
-import com.example.demo.user.UserService;
+import com.example.demo.service.user.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
