@@ -56,7 +56,10 @@
                 <c:otherwise>
                     <c:forEach var="file" items="${files}">
                         <tr>
-                            <td class="ps-3 ps-md-4 fw-medium"><c:out value="${file.fileName}" /></td>
+                            <c:url var="downloadUrl" value="/main/download">
+                                <c:param name="fileSaveName" value="${file.fileSaveName}" />
+                            </c:url>
+                            <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a></td>
                             <td class="text-body-secondary"><c:out value="${file.fileSize}" /> bytes</td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
                         </tr>

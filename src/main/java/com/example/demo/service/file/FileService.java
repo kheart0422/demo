@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,7 +50,8 @@ public class FileService {
         Path uploadDirectory = Paths.get(filePath).toAbsolutePath().normalize().resolve(today).normalize();
         Files.createDirectories(uploadDirectory);
 
-        Path destination = uploadDirectory.resolve(UUID.randomUUID() + "_" + safeName).normalize();
+        String storedName = UUID.randomUUID() + "_" + safeName;
+        Path destination = uploadDirectory.resolve(storedName).normalize();
         if (!destination.startsWith(uploadDirectory)) {
             throw new IllegalArgumentException("올바르지 않은 파일 이름입니다.");
         }
@@ -63,7 +65,7 @@ public class FileService {
         file.transferTo(destination);
         try {
             // 저장
-            fileMapper.insertFile(userId, originalName, UUID.randomUUID() + "_" + safeName, destination.toString(), file.getSize());
+            fileMapper.insertFile(userId, originalName, storedName, destination.toString(), file.getSize());
         } catch (RuntimeException e) {
             Files.deleteIfExists(destination);
             throw e;
@@ -71,5 +73,26 @@ public class FileService {
         log.info("파일 저장 완료: {} ({} bytes)", destination, file.getSize());
         return safeName;
     }
+
+    // 다운로드할 파일의 물리적 위치와 원본 이름을 안전하게 포장해서 서비스 레이어 밖(컨트롤러 등)으로 전달하기 위한 레코드(Record) 기반의 보안 파일 조회 구조
+    // record는 클래스의 일종으로, 데이터를 저장하는 필드(멤버 변수) 정의와 생성자, 간단한 유효성 검사(컴팩트 생성자) 정도만 들어갈 수 있음
+    // record: 데이터 운반용 택배 상자 (예: DownloadFile)
+    // Service 클래스: 택배 상자에 무엇을 담을지 결정하고 검증하는 일꾼 (예: findFileForDownload 메서드)
+    public record DownloadFile(Path path, String originalName) { }
+
+    public DownloadFile findFileForDownload(String username, String fileSaveName) throws IOException {
+        Map<String, Object> file = fileMapper.selectFileForDownload(username, fileSaveName);
+        if (file == null) {
+            throw new NoSuchFileException("파일을 찾을 수 없습니다.");
+        }
+
+        Path storageRoot = Paths.get(filePath).toAbsolutePath().normalize();
+        Path filePath = Paths.get(String.valueOf(file.get("fileDir"))).toAbsolutePath().normalize();
+        if (!filePath.startsWith(storageRoot) || !Files.isRegularFile(filePath)) {
+            throw new NoSuchFileException("저장된 파일을 찾을 수 없습니다.");
+        }
+        return new DownloadFile(filePath, String.valueOf(file.get("fileName")));
+    }
+
 
 }

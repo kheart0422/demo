@@ -6,6 +6,7 @@
     <select id="selectFilesByUsername" resultType="HashMap">
         SELECT
             f.fileName,
+            f.fileSaveName,
             f.fileSize,
             DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate
         FROM userFileList f
@@ -19,4 +20,14 @@
         INSERT INTO userFileList (Id, fileName, fileSaveName, fileDir, fileSize, fileUploadDate)
         VALUES (#{userId}, #{fileName}, #{fileSaveName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
     </insert>
+
+    <!-- 로그인 사용자가 소유한 파일만 다운로드 조회 -->
+    <select id="selectFileForDownload" resultType="HashMap">
+        SELECT f.fileName, f.fileDir
+        FROM userFileList f
+                 INNER JOIN webNoteUser u ON u.id = f.Id
+        WHERE u.username = #{username}
+          AND f.fileSaveName = #{fileSaveName}
+            LIMIT 1
+    </select>
 </mapper>
