@@ -18,14 +18,17 @@ public class FileEntity {
 
     private String fileName;
 
+    private String fileSaveName;
+
     private String fileDir;
 
     private long fileSize;
 
     private LocalDateTime fileUploadDate;
 
-    public void UploadFile(String fileName, String fileDir, long fileSize) {
+    public void UploadFile(String fileName, String fileSaveName, String fileDir, long fileSize) {
         this.fileName = fileName;
+        this.fileSaveName = fileSaveName;
         this.fileDir = fileDir;
         this.fileSize = fileSize;
     }

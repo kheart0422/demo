@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,9 +43,10 @@ public class FileService {
             throw new IllegalArgumentException("PDF 파일만 업로드할 수 있습니다.");
         }
 
-        String safeName = Paths.get(originalName).getFileName().toString()
-                .replaceAll("[^가-힣a-zA-Z0-9._-]", "_");
-        Path uploadDirectory = Paths.get(filePath).toAbsolutePath().normalize();
+        String safeName = Paths.get(originalName).getFileName().toString().replaceAll("[^가-힣a-zA-Z0-9._-]", "_");
+        // 특정 시간대(Asia/Seoul)나 형식을 지정할 필요
+        String today = LocalDate.now(ZoneId.of("Asia/Seoul")).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        Path uploadDirectory = Paths.get(filePath).toAbsolutePath().normalize().resolve(today).normalize();
         Files.createDirectories(uploadDirectory);
 
         Path destination = uploadDirectory.resolve(UUID.randomUUID() + "_" + safeName).normalize();
@@ -50,6 +54,7 @@ public class FileService {
             throw new IllegalArgumentException("올바르지 않은 파일 이름입니다.");
         }
 
+        // 로그인한 사용자 아이디 -> 세션에 저장해서 가져오는건?
         Long userId = userMapper.selectIdByUsername(username);
         if (userId == null) {
             throw new IllegalArgumentException("로그인 사용자를 찾을 수 없습니다. 다시 로그인해 주세요.");
@@ -57,7 +62,8 @@ public class FileService {
 
         file.transferTo(destination);
         try {
-            fileMapper.insertFile(userId, safeName, destination.toString(), file.getSize());
+            // 저장
+            fileMapper.insertFile(userId, originalName, UUID.randomUUID() + "_" + safeName, destination.toString(), file.getSize());
         } catch (RuntimeException e) {
             Files.deleteIfExists(destination);
             throw e;

@@ -4,7 +4,10 @@
 <mapper namespace="com.example.demo.mapper.FileMapper">
     <!-- 로그인한 사용자의 파일 리스트 -->
     <select id="selectFilesByUsername" resultType="HashMap">
-        SELECT f.fileName, f.fileSize, f.fileUploadDate
+        SELECT
+            f.fileName,
+            f.fileSize,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate
         FROM userFileList f
         INNER JOIN webNoteUser u ON u.id = f.Id
         WHERE u.username = #{username}
@@ -13,7 +16,7 @@
 
     <!-- 파일 업로드 -->
     <insert id="insertFile">
-        INSERT INTO userFileList (Id, fileName, fileDir, fileSize, fileUploadDate)
-        VALUES (#{userId}, #{fileName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
+        INSERT INTO userFileList (Id, fileName, fileSaveName, fileDir, fileSize, fileUploadDate)
+        VALUES (#{userId}, #{fileName}, #{fileSaveName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
     </insert>
 </mapper>
