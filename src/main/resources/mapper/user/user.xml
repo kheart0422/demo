@@ -17,6 +17,12 @@
         WHERE username = #{username}
     </select>
 
+    <select id="selectIdByUsername" resultType="long">
+        SELECT id
+        FROM webNoteUser
+        WHERE username = #{username}
+    </select>
+
     <!-- 회원가입 -->
     <insert id="insertUser">
         <!-- UserMapper.insertUser -->

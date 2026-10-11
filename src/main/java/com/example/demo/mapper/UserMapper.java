@@ -14,6 +14,8 @@ public interface UserMapper {
     List<Map<String, Object>> selectAllUsers();
     // 회원인지 확인
     UserEntity selectLoginUserByUserName(@Param("username") String username);
+    // 로그인한 사용자
+    Long selectIdByUsername(@Param("username") String username);
     // 회원가입
     int insertUser(@Param("username") String username, @Param("password") String password);
 }

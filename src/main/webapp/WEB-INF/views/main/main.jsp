@@ -1,35 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" import="java.util.*" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
-<%
-    // 화면 확인용 임시 데이터입니다. 실제 업로드 목록 연동 시 이 부분을 제거하면 됩니다.
-    List<Map<String, String>> sampleFiles = new ArrayList<>();
-    String[] names = {"보고서.pdf", "프로젝트_기획안.docx", "회의록.xlsx", "화면설계.png", "자료모음.zip",
-            "요구사항정의서.pdf", "테스트결과.xlsx", "참고이미지.jpg", "발표자료.pptx", "개발가이드.txt",
-            "계약서.pdf", "정산내역.xlsx", "로고시안.png", "일정표.xlsx", "데이터.csv",
-            "매뉴얼.docx", "아키텍처.png", "샘플영상.mp4", "견적서.pdf", "백업파일.zip",
-            "디자인시안.fig", "업무정리.md", "최종자료.pdf"};
-    String[] sizes = {"1.2 MB", "842 KB", "256 KB", "3.4 MB", "8.1 MB", "520 KB", "174 KB", "2.0 MB", "5.6 MB", "18 KB"};
-    for (int i = 0; i < names.length; i++) {
-        Map<String, String> file = new HashMap<>();
-        file.put("name", names[i]);
-        file.put("sizeText", sizes[i % sizes.length]);
-        file.put("uploadedAtText", String.format("2026-10-%02d %02d:%02d", 6 - (i % 6), 10 + (i % 12), (i * 7) % 60));
-        sampleFiles.add(file);
-    }
-    int pageSize = 10;
-    int totalPages = (int) Math.ceil((double) sampleFiles.size() / pageSize);
-    int currentPage = 1;
-    try { currentPage = Integer.parseInt(request.getParameter("page")); } catch (Exception ignored) { }
-    currentPage = Math.min(Math.max(currentPage, 1), totalPages);
-    int pageGroupStart = ((currentPage - 1) / 5) * 5 + 1;
-    int pageGroupEnd = Math.min(pageGroupStart + 4, totalPages);
-    int fromIndex = (currentPage - 1) * pageSize;
-    request.setAttribute("files", sampleFiles.subList(fromIndex, Math.min(fromIndex + pageSize, sampleFiles.size())));
-    request.setAttribute("currentPage", currentPage);
-    request.setAttribute("totalPages", totalPages);
-    request.setAttribute("pageGroupStart", pageGroupStart);
-    request.setAttribute("pageGroupEnd", pageGroupEnd);
-%>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -57,13 +27,18 @@
 </nav>
 
 <main class="container py-4 py-lg-5">
+    <c:if test="${not empty uploadMessage}">
+        <div class="alert ${uploadSuccess ? 'alert-success' : 'alert-danger'}" role="alert">
+            <c:out value="${uploadMessage}" />
+        </div>
+    </c:if>
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-2 mb-4">
         <div>
             <p class="text-primary fw-semibold small text-uppercase mb-1">내 공간</p>
             <h1 class="h2 fw-bold mb-1">업로드 파일</h1>
-            <p class="text-body-secondary mb-0">파일을 한곳에서 확인하고 관리하세요.</p>
+            <p class="text-body-secondary mb-0"><c:out value="${username}" />님의 파일을 확인하고 관리하세요.</p>
         </div>
-        <span class="badge rounded-pill text-bg-light border text-secondary px-3 py-2">총 <%= sampleFiles.size() %>개</span>
+        <span class="badge rounded-pill text-bg-light border text-secondary px-3 py-2">총 ${empty files ? 0 : files.size()}개</span>
     </div>
 
     <section class="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -81,9 +56,9 @@
                 <c:otherwise>
                     <c:forEach var="file" items="${files}">
                         <tr>
-                            <td class="ps-3 ps-md-4 fw-medium"><c:out value="${file.name}" /></td>
-                            <td class="text-body-secondary"><c:out value="${file.sizeText}" /></td>
-                            <td class="text-body-secondary"><c:out value="${file.uploadedAtText}" /></td>
+                            <td class="ps-3 ps-md-4 fw-medium"><c:out value="${file.fileName}" /></td>
+                            <td class="text-body-secondary"><c:out value="${file.fileSize}" /> bytes</td>
+                            <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>
@@ -119,7 +94,7 @@
             return;
         }
 
-        // document.getElementById('uploadForm').submit();
+        document.getElementById('uploadForm').requestSubmit();
     });
 </script>
 </body>

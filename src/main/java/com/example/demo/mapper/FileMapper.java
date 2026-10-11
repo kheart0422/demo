@@ -1,0 +1,18 @@
+package com.example.demo.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+@Repository
+public interface FileMapper {
+    List<Map<String, Object>> selectFilesByUsername(@Param("username") String username);
+    int insertFile(@Param("userId") long userId, // 사용자 아이디
+                   @Param("fileName") String fileName, // 파일 이름
+                   @Param("fileDir") String fileDir, // 파일 저장경로
+                   @Param("fileSize") long fileSize); // 파일 사이즈
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.demo.mapper.FileMapper">
+    <!-- 로그인한 사용자의 파일 리스트 -->
+    <select id="selectFilesByUsername" resultType="HashMap">
+        SELECT f.fileName, f.fileSize, f.fileUploadDate
+        FROM userFileList f
+        INNER JOIN webNoteUser u ON u.id = f.Id
+        WHERE u.username = #{username}
+        ORDER BY f.fileUploadDate DESC
+    </select>
+
+    <!-- 파일 업로드 -->
+    <insert id="insertFile">
+        INSERT INTO userFileList (Id, fileName, fileDir, fileSize, fileUploadDate)
+        VALUES (#{userId}, #{fileName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
+    </insert>
+</mapper>
