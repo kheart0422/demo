@@ -2,17 +2,87 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.demo.mapper.FileMapper">
-    <!-- 로그인한 사용자의 파일 리스트 -->
-    <select id="selectFilesByUsername" resultType="HashMap">
-        SELECT
-            f.fileName,
-            f.fileSaveName,
-            f.fileSize,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate
+    <!-- 공통 파일 검색 필터 조각 (파일명, 초성, 업로드 날짜 조건) -->
+    <sql id="fileSearchFilters">
+        <!-- 1. 파일명 일반 키워드 검색 (LOCATE 함수를 이용한 부분 일치 검색) -->
+        <if test="fileNameSearch != null and fileNameSearch != ''">
+            AND LOCATE(#{fileNameSearch}, f.fileName) > 0
+        </if>
+        <!-- 2. 한글 초성 검색 (REGEXP 정규식 패턴을 이용한 매칭) -->
+        <if test="initialPattern != null and initialPattern != ''">
+            AND f.fileName REGEXP #{initialPattern}
+        </if>
+        <!-- 3. 업로드 날짜 검색 (해당 날짜 00:00:00부터 다음날 00:00:00 직전까지의 하루 범위 조회) -->
+        <if test="uploadDate != null and uploadDate != ''">
+            AND f.fileUploadDate >= #{uploadDate}
+            AND f.fileUploadDate &lt; DATE_ADD(#{uploadDate}, INTERVAL 1 DAY)
+        </if>
+    </sql>
+
+    <!-- 로그인한 사용자의 업로드된 파일의 총 갯수 -->
+    <select id="countFilesByUsername" resultType="long">
+        SELECT COUNT(*)
         FROM userFileList f
         INNER JOIN webNoteUser u ON u.id = f.Id
         WHERE u.username = #{username}
-        ORDER BY f.fileUploadDate DESC
+        <include refid="fileSearchFilters" />
+    </select>
+
+    <!-- 첫 페이지 조회: 로그인한 사용자의 최신 파일 목록을 첫 페이지 분량(limit)만큼 가져옴 -->
+    <select id="selectFirstFilesByUsername" resultType="HashMap">
+        SELECT
+            f.fileId,
+            f.fileName,
+            f.fileSaveName,
+            f.fileSize,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM userFileList f
+        INNER JOIN webNoteUser u ON u.id = f.Id
+        WHERE u.username = #{username}
+        <include refid="fileSearchFilters" />
+        ORDER BY f.fileUploadDate DESC, f.fileId DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 다음 페이지(더보기) 조회: 기준점(cursor)보다 과거(이전)에 업로드된 파일 목록을 가져옴 -->
+    <select id="selectNextFilesByUsername" resultType="HashMap">
+        SELECT
+            f.fileId,
+            f.fileName,
+            f.fileSaveName,
+            f.fileSize,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM userFileList f
+        INNER JOIN webNoteUser u ON u.id = f.Id
+        WHERE u.username = #{username}
+        <include refid="fileSearchFilters" />
+          AND (f.fileUploadDate &lt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+               OR (f.fileUploadDate = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+                   AND f.fileId <![CDATA[ < ]]> #{cursorId}))
+        ORDER BY f.fileUploadDate DESC, f.fileId DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 이전 페이지(역방향) 조회: 기준점(cursor)보다 최신(이후)에 업로드된 파일 목록을 가져옴 -->
+    <select id="selectPreviousFilesByUsername" resultType="HashMap">
+        SELECT
+            f.fileId,
+            f.fileName,
+            f.fileSaveName,
+            f.fileSize,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM userFileList f
+        INNER JOIN webNoteUser u ON u.id = f.Id
+        WHERE u.username = #{username}
+        <include refid="fileSearchFilters" />
+          AND (f.fileUploadDate &gt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+               OR (f.fileUploadDate = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+                   AND f.fileId > #{cursorId}))
+        ORDER BY f.fileUploadDate ASC, f.fileId ASC
+        LIMIT #{limit}
     </select>
 
     <!-- 파일 업로드 -->

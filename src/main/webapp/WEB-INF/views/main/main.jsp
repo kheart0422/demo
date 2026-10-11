@@ -38,30 +38,47 @@
             <h1 class="h2 fw-bold mb-1">업로드 파일</h1>
             <p class="text-body-secondary mb-0"><c:out value="${username}" />님의 파일을 확인하고 관리하세요.</p>
         </div>
-        <span class="badge rounded-pill text-bg-light border text-secondary px-3 py-2">총 ${empty files ? 0 : files.size()}개</span>
+        <span class="badge rounded-pill text-bg-light border text-secondary px-3 py-2">총 ${totalCount}개</span>
     </div>
 
     <section class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header bg-white border-0 px-3 px-md-4 pt-4 pb-3">
-            <h2 class="h5 fw-semibold mb-0">파일 목록</h2>
+            <form action="${pageContext.request.contextPath}/main" method="get" class="d-flex flex-wrap align-items-center gap-2">
+                <label class="visually-hidden" for="searchType">검색 기준</label>
+                <select class="form-select w-auto" id="searchType" name="searchType">
+                    <option value="name" ${searchType != 'date' ? 'selected' : ''}>파일명</option>
+                    <option value="date" ${searchType == 'date' ? 'selected' : ''}>업로드 날짜</option>
+                </select>
+                <label class="visually-hidden" for="searchValue">검색어 또는 날짜</label>
+                <input class="form-control flex-grow-1" id="searchValue" name="searchValue"
+                       type="${searchType == 'date' ? 'date' : 'search'}"
+                       value="<c:out value='${searchValue}' />"
+                       placeholder="${searchType == 'date' ? '업로드 날짜 선택' : '파일명 또는 초성 입력'}">
+                <button class="btn btn-primary" type="submit">검색</button>
+                <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/main">초기화</a>
+            </form>
         </div>
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
-                <tr><th class="ps-3 ps-md-4 py-3">파일 이름</th><th class="py-3">용량</th><th class="py-3">업로드 날짜</th></tr>
+                <tr><th class="ps-3 ps-md-4 py-3">파일 이름</th><th class="py-3">용량</th><th class="py-3">업로드 날짜</th><th class="py-3"></th></tr>
             </thead>
             <tbody>
             <c:choose>
-                <c:when test="${empty files}"><tr><td colspan="3" class="text-center text-body-secondary py-5">업로드한 파일이 없습니다.</td></tr></c:when>
+                <c:when test="${empty files}"><tr><td colspan="4" class="text-center text-body-secondary py-5">업로드한 파일이 없습니다.</td></tr></c:when>
                 <c:otherwise>
                     <c:forEach var="file" items="${files}">
                         <tr>
                             <c:url var="downloadUrl" value="/main/download">
                                 <c:param name="fileSaveName" value="${file.fileSaveName}" />
                             </c:url>
+                            <c:url var="previewUrl" value="/main/preview">
+                                <c:param name="fileSaveName" value="${file.fileSaveName}" />
+                            </c:url>
                             <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a></td>
-                            <td class="text-body-secondary"><c:out value="${file.fileSize}" /> bytes</td>
+                            <td class="text-body-secondary"><c:out value="${file.fileSize}" /></td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
+                            <td><a class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>
@@ -69,14 +86,35 @@
             </tbody>
         </table>
         </div>
-        <c:if test="${totalPages > 1}">
+        <c:if test="${not empty files and (hasPrevious or hasNext)}">
             <nav class="py-4" aria-label="파일 목록 페이지">
                 <ul class="pagination justify-content-center mb-0">
-                <li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="?page=${currentPage - 1}">이전</a></li>
-                <c:forEach var="pageNumber" begin="${pageGroupStart}" end="${pageGroupEnd}">
-                    <li class="page-item ${pageNumber == currentPage ? 'active' : ''}"><a class="page-link" href="?page=${pageNumber}" aria-label="${pageNumber}페이지" ${pageNumber == currentPage ? 'aria-current="page"' : ''}>${pageNumber}</a></li>
-                </c:forEach>
-                <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="?page=${currentPage + 1}">다음</a></li>
+                <c:choose>
+                    <c:when test="${hasPrevious}">
+                        <c:url var="previousUrl" value="/main">
+                            <c:param name="direction" value="prev" />
+                            <c:param name="cursorDate" value="${firstFile.cursorDate}" />
+                            <c:param name="cursorId" value="${firstFile.fileId}" />
+                            <c:param name="searchType" value="${searchType}" />
+                            <c:param name="searchValue" value="${searchValue}" />
+                        </c:url>
+                        <li class="page-item"><a class="page-link" href="${previousUrl}">이전</a></li>
+                    </c:when>
+                    <c:otherwise><li class="page-item disabled"><span class="page-link">이전</span></li></c:otherwise>
+                </c:choose>
+                <c:choose>
+                    <c:when test="${hasNext}">
+                        <c:url var="nextUrl" value="/main">
+                            <c:param name="direction" value="next" />
+                            <c:param name="cursorDate" value="${lastFile.cursorDate}" />
+                            <c:param name="cursorId" value="${lastFile.fileId}" />
+                            <c:param name="searchType" value="${searchType}" />
+                            <c:param name="searchValue" value="${searchValue}" />
+                        </c:url>
+                        <li class="page-item"><a class="page-link" href="${nextUrl}">다음</a></li>
+                    </c:when>
+                    <c:otherwise><li class="page-item disabled"><span class="page-link">다음</span></li></c:otherwise>
+                </c:choose>
                 </ul>
             </nav>
         </c:if>
@@ -86,6 +124,14 @@
 <footer class="container pb-4 text-center text-body-secondary small">업로드한 파일은 14일 뒤에 자동 삭제됩니다.</footer>
 <script src="${pageContext.request.contextPath}/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script>
+    const searchType = document.getElementById('searchType');
+    const searchValue = document.getElementById('searchValue');
+    searchType.addEventListener('change', function () {
+        searchValue.type = this.value === 'date' ? 'date' : 'search';
+        searchValue.value = '';
+        searchValue.placeholder = this.value === 'date' ? '업로드 날짜 선택' : '파일명 또는 초성 입력';
+    });
+
     document.getElementById('fileInput').addEventListener('change', function () {
         const file = this.files[0];
         if (!file) return;

@@ -85,6 +85,37 @@ public class FileController {
         }
     }
 
+    @GetMapping("/main/preview")
+    public ResponseEntity<?> preview(@RequestParam("fileSaveName") String fileSaveName,
+                                     @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("success", false, "message", "로그인이 필요합니다."));
+        }
+
+        try {
+            FileService.DownloadFile file = fileService.findFileForDownload(userDetails.getUsername(), fileSaveName);
+            ContentDisposition disposition = ContentDisposition.inline()
+                    .filename(file.originalName(), StandardCharsets.UTF_8)
+                    .build();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentLength(Files.size(file.path()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                    .body(new FileSystemResource(file.path()));
+        } catch (NoSuchFileException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("파일 미리보기 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("success", false, "message", "파일 미리보기에 실패했습니다."));
+        }
+    }
+
 // 200 code를 받지만 jsp에서 응답 표시 해주는 부분을 유지 할 수 없음으로 주석
 //    @PostMapping(value = "/main/upload", produces = "application/json;charset=UTF-8")
 //    public ResponseEntity<Map<String, Object>> upload(
