@@ -5,7 +5,9 @@ import com.example.demo.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -21,6 +23,9 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -226,6 +231,76 @@ public class FileService {
             throw new NoSuchFileException("저장된 파일을 찾을 수 없습니다.");
         }
         return new DownloadFile(filePath, String.valueOf(file.get("fileName")));
+    }
+
+    /** 매 시간 만 14일이 지난 업로드 파일과 DB 정보를 정리합니다. */
+    @Scheduled(cron = "0 0 * * * *", zone = "Asia/Seoul")
+    public void deleteExpiredFiles() {
+        Path storageRoot = Paths.get(filePath).toAbsolutePath().normalize();
+        List<Map<String, Object>> expiredFiles = fileMapper.selectExpiredFiles();
+        int deletedRecords = 0;
+        Set<Path> candidateDirectories = new LinkedHashSet<>();
+
+        for (Map<String, Object> file : expiredFiles) {
+            Object idValue = file.get("fileId");
+            Object pathValue = file.get("fileDir");
+            if (!(idValue instanceof Number) || pathValue == null) {
+                log.warn("만료 파일 정보를 확인할 수 없어 건너뜁니다: {}", file);
+                continue;
+            }
+
+            try {
+                Path physicalFile = Paths.get(pathValue.toString()).toAbsolutePath().normalize();
+                if (physicalFile.equals(storageRoot) || !physicalFile.startsWith(storageRoot)) {
+                    log.error("저장 루트 밖의 파일 경로라 삭제를 건너뜁니다: {}", physicalFile);
+                    continue;
+                }
+
+                // 이미 파일이 없더라도 DB의 만료 레코드는 정리합니다.
+                Files.deleteIfExists(physicalFile);
+                fileMapper.deleteFileById(((Number) idValue).longValue());
+                deletedRecords++;
+                if (physicalFile.getParent() != null) {
+                    candidateDirectories.add(physicalFile.getParent());
+                }
+            } catch (IOException | RuntimeException e) {
+                // 물리 파일 삭제가 실패하면 DB 레코드를 남겨 다음 정리 주기에 재시도합니다.
+                log.error("만료 파일 삭제에 실패했습니다: {}", pathValue, e);
+            }
+        }
+
+        deleteEmptyDirectories(storageRoot, candidateDirectories);
+        if (deletedRecords > 0) {
+            log.info("만료 파일 정리 완료: {}개", deletedRecords);
+        }
+    }
+
+    /** 삭제한 파일이 있던 경로만 확인해 빈 하위 디렉터리를 삭제합니다. */
+    private void deleteEmptyDirectories(Path storageRoot, Set<Path> candidates) {
+        for (Path candidate : candidates) {
+            Path directory = candidate;
+            while (directory != null && !directory.equals(storageRoot) && directory.startsWith(storageRoot)) {
+                try (Stream<Path> contents = Files.list(directory)) {
+                    if (contents.findAny().isPresent()) {
+                        break;
+                    }
+                } catch (java.nio.file.NoSuchFileException e) {
+                    directory = directory.getParent();
+                    continue;
+                } catch (IOException e) {
+                    log.warn("디렉터리 확인에 실패했습니다: {}", directory, e);
+                    break;
+                }
+
+                try {
+                    Files.deleteIfExists(directory);
+                    directory = directory.getParent();
+                } catch (IOException e) {
+                    log.warn("빈 디렉터리 삭제에 실패했습니다: {}", directory, e);
+                    break;
+                }
+            }
+        }
     }
 
 

@@ -7,6 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>파일 보관함</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/vendor/bootstrap/css/bootstrap.min.css">
+    <style>
+        #searchDate::-webkit-calendar-picker-indicator {
+            display: block;
+            opacity: 1;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body class="bg-body-tertiary">
 <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
@@ -49,11 +56,14 @@
                     <option value="name" ${searchType != 'date' ? 'selected' : ''}>파일명</option>
                     <option value="date" ${searchType == 'date' ? 'selected' : ''}>업로드 날짜</option>
                 </select>
-                <label class="visually-hidden" for="searchValue">검색어 또는 날짜</label>
-                <input class="form-control flex-grow-1" id="searchValue" name="searchValue"
-                       type="${searchType == 'date' ? 'date' : 'search'}"
-                       value="<c:out value='${searchValue}' />"
-                       placeholder="${searchType == 'date' ? '업로드 날짜 선택' : '파일명 또는 초성 입력'}">
+                <label class="visually-hidden" for="searchName">파일명 또는 초성</label>
+                <input class="form-control flex-grow-1 ${searchType == 'date' ? 'd-none' : ''}" id="searchName" name="searchValue"
+                       type="search" value="<c:out value='${searchValue}' />"
+                       placeholder="파일명 또는 초성 입력" ${searchType == 'date' ? 'disabled' : ''}>
+                <label class="visually-hidden" for="searchDate">업로드 날짜</label>
+                <input class="form-control flex-grow-1 ${searchType == 'date' ? '' : 'd-none'}" id="searchDate" name="searchValue"
+                       type="date" value="<c:out value='${searchValue}' />"
+                       ${searchType == 'date' ? '' : 'disabled'}>
                 <button class="btn btn-primary" type="submit">검색</button>
                 <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/main">초기화</a>
             </form>
@@ -124,12 +134,73 @@
 <footer class="container pb-4 text-center text-body-secondary small">업로드한 파일은 14일 뒤에 자동 삭제됩니다.</footer>
 <script src="${pageContext.request.contextPath}/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script>
+    const contextPath = '${pageContext.request.contextPath}';
+
+    // HTTP 상태 코드를 Key로 사용하는 프론트엔드 메시지 프로퍼티 객체
+    const fileErrorMessages = {
+        401: '로그인이 필요합니다.',
+        404: '파일이 삭제되었거나 찾을 수 없습니다. 목록을 새로고침합니다.',
+        500: '파일 처리 중 서버 오류가 발생했습니다.',
+        default: '파일 요청 중 알 수 없는 오류가 발생했습니다.'
+    };
+
+    // 파일 권한 및 존재 여부를 체크하는 공통 비동기 함수
+    async function checkFileAccessible(url) {
+        try {
+            // 파일 본문을 다운받지 않고 헤더 정보(상태 코드)만 가볍게 찔러봅니다.
+            const response = await fetch(url, { method: 'HEAD', credentials: 'same-origin' });
+
+            if (response.ok) {
+                return true; // 파일이 정상적으로 존재함
+            } else {
+                // 200번대 성공이 아니면 알림창을 띄우고 무조건 새로고침합니다.
+                const message = fileErrorMessages[response.status] || fileErrorMessages.default;
+                alert(message);
+                window.location.reload();
+                return false;
+            }
+        } catch (error) {
+            // 네트워크 단절 등 아예 요청이 실패한 경우 예외 처리
+            alert(fileErrorMessages.default);
+            window.location.reload();
+            return false;
+        }
+    }
+
+    // [다운로드 이벤트 핸들러]
+    document.querySelectorAll('a[href*="/main/download"]').forEach(function (link) {
+        link.addEventListener('click', async function (event) {
+            event.preventDefault();
+            // 사전 체크가 통과했을 때만 브라우저 기본 다운로드 흐름을 실행합니다.
+            if (await checkFileAccessible(link.href)) {
+                window.location.href = link.href;
+            }
+        });
+    });
+
+    // [미리보기 이벤트 핸들러]
+    document.querySelectorAll('a[href*="/main/preview"]').forEach(function (link) {
+        link.addEventListener('click', async function (event) {
+            event.preventDefault();
+            // 사전 체크가 통과했을 때만 안전하게 새 창을 열어 미리보기를 띄웁니다.
+            if (await checkFileAccessible(link.href)) {
+                window.open(link.href, '_blank');
+            }
+        });
+    });
+
+
     const searchType = document.getElementById('searchType');
-    const searchValue = document.getElementById('searchValue');
+    const searchName = document.getElementById('searchName');
+    const searchDate = document.getElementById('searchDate');
     searchType.addEventListener('change', function () {
-        searchValue.type = this.value === 'date' ? 'date' : 'search';
-        searchValue.value = '';
-        searchValue.placeholder = this.value === 'date' ? '업로드 날짜 선택' : '파일명 또는 초성 입력';
+        const useDate = this.value === 'date';
+        searchName.classList.toggle('d-none', useDate);
+        searchDate.classList.toggle('d-none', !useDate);
+        searchName.disabled = useDate;
+        searchDate.disabled = !useDate;
+        searchName.value = '';
+        searchDate.value = '';
     });
 
     document.getElementById('fileInput').addEventListener('change', function () {

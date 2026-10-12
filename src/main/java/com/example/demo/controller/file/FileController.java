@@ -55,12 +55,9 @@ public class FileController {
     }
 
     @GetMapping("/main/download")
-    public ResponseEntity<?> download(@RequestParam("fileSaveName") String fileSaveName,
-                                      @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> download(@RequestParam("fileSaveName") String fileSaveName, @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", "로그인이 필요합니다."));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         try {
@@ -74,24 +71,19 @@ public class FileController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                     .body(new FileSystemResource(file.path()));
         } catch (NoSuchFileException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 Not Found
+
         } catch (Exception e) {
             log.error("파일 다운로드 실패", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", "파일 다운로드에 실패했습니다."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // 500 err
         }
     }
 
     @GetMapping("/main/preview")
-    public ResponseEntity<?> preview(@RequestParam("fileSaveName") String fileSaveName,
-                                     @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> preview(@RequestParam("fileSaveName") String fileSaveName, @AuthenticationPrincipal UserDetails userDetails) {
+
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", "로그인이 필요합니다."));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         try {
@@ -104,15 +96,11 @@ public class FileController {
                     .contentLength(Files.size(file.path()))
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                     .body(new FileSystemResource(file.path()));
-        } catch (NoSuchFileException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+        }catch (NoSuchFileException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 Not Found
         } catch (Exception e) {
             log.error("파일 미리보기 실패", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("success", false, "message", "파일 미리보기에 실패했습니다."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // 500 err
         }
     }
 

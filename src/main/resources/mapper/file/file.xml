@@ -100,4 +100,15 @@
           AND f.fileSaveName = #{fileSaveName}
             LIMIT 1
     </select>
+
+    <!-- 업로드 후 14일이 지난 파일 -->
+    <select id="selectExpiredFiles" resultType="HashMap">
+        SELECT fileId, fileDir
+        FROM userFileList
+        WHERE fileUploadDate &lt; DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 14 DAY)
+    </select>
+
+    <delete id="deleteFileById">
+        DELETE FROM userFileList WHERE fileId = #{fileId}
+    </delete>
 </mapper>
