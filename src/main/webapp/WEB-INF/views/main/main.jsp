@@ -20,6 +20,7 @@
     <div class="container py-2">
         <a class="navbar-brand fw-bold text-primary" href="${pageContext.request.contextPath}/main">파일 보관함</a>
         <div class="d-flex align-items-center gap-2">
+            <button type="button" id="myNote" class="btn btn-outline-primary" onclick="location.href='${pageContext.request.contextPath}/note'">내 노트</button>
             <form action="${pageContext.request.contextPath}/main/upload" method="post" enctype="multipart/form-data" id="uploadForm" class="m-0">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
                 <input id="fileInput" class="d-none" type="file" name="file" accept=".pdf,application/pdf" required>
