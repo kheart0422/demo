@@ -4,7 +4,7 @@
 <mapper namespace="com.example.demo.mapper.UserMapper">
     <select id="selectAllUsers" resultType="HashMap">
         SELECT *
-        FROM webNoteUser
+        FROM users
     </select>
 
     <!-- 로그인 시도한 username 을 조회해서 회원인지 확인 -->
@@ -13,20 +13,21 @@
         SELECT
             username,
             password
-        FROM webNoteUser
+        FROM users
         WHERE username = #{username}
     </select>
 
     <select id="selectIdByUsername" resultType="long">
+        <!-- UserMapper.selectIdByUsername -->
         SELECT id
-        FROM webNoteUser
+        FROM users
         WHERE username = #{username}
     </select>
 
     <!-- 회원가입 -->
     <insert id="insertUser">
         <!-- UserMapper.insertUser -->
-        INSERT INTO webNoteUser(username, password)
+        INSERT INTO users(username, password)
         VALUES(#{username}, #{password})
     </insert>
 </mapper>

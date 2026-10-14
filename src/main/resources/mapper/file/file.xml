@@ -4,6 +4,7 @@
 <mapper namespace="com.example.demo.mapper.FileMapper">
     <!-- 공통 파일 검색 필터 조각 (파일명, 초성, 업로드 날짜 조건) -->
     <sql id="fileSearchFilters">
+        <!-- FileMapper.fileSearchFilters -->
         <!-- 1. 파일명 일반 키워드 검색 (LOCATE 함수를 이용한 부분 일치 검색) -->
         <if test="fileNameSearch != null and fileNameSearch != ''">
             AND LOCATE(#{fileNameSearch}, f.fileName) > 0
@@ -14,101 +15,109 @@
         </if>
         <!-- 3. 업로드 날짜 검색 (해당 날짜 00:00:00부터 다음날 00:00:00 직전까지의 하루 범위 조회) -->
         <if test="uploadDate != null and uploadDate != ''">
-            AND f.fileUploadDate >= #{uploadDate}
-            AND f.fileUploadDate &lt; DATE_ADD(#{uploadDate}, INTERVAL 1 DAY)
+            AND f.uploaded_at >= #{uploadDate}
+            AND f.uploaded_at &lt; DATE_ADD(#{uploadDate}, INTERVAL 1 DAY)
         </if>
     </sql>
 
     <!-- 로그인한 사용자의 업로드된 파일의 총 갯수 -->
     <select id="countFilesByUsername" resultType="long">
+        <!-- FileMapper.countFilesByUsername -->
         SELECT COUNT(*)
-        FROM userFileList f
-        INNER JOIN webNoteUser u ON u.id = f.Id
+        FROM user_files f
+        INNER JOIN users u ON u.id = f.user_id
         WHERE u.username = #{username}
         <include refid="fileSearchFilters" />
     </select>
 
     <!-- 첫 페이지 조회: 로그인한 사용자의 최신 파일 목록을 첫 페이지 분량(limit)만큼 가져옴 -->
     <select id="selectFirstFilesByUsername" resultType="HashMap">
+        <!-- FileMapper.selectFirstFilesByUsername -->
         SELECT
-            f.fileId,
-            f.fileName,
-            f.fileSaveName,
-            f.fileSize,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
-        FROM userFileList f
-        INNER JOIN webNoteUser u ON u.id = f.Id
+            f.file_id as fileId,
+            f.file_name as fileName,
+            f.file_save_name as fileSaveName,
+            f.file_size as fileSize,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM user_files f
+        INNER JOIN users u ON u.id = f.user_id
         WHERE u.username = #{username}
         <include refid="fileSearchFilters" />
-        ORDER BY f.fileUploadDate DESC, f.fileId DESC
+        ORDER BY f.uploaded_at DESC, f.file_id DESC
         LIMIT #{limit}
     </select>
 
     <!-- 다음 페이지(더보기) 조회: 기준점(cursor)보다 과거(이전)에 업로드된 파일 목록을 가져옴 -->
     <select id="selectNextFilesByUsername" resultType="HashMap">
+        <!-- FileMapper.selectNextFilesByUsername -->
         SELECT
-            f.fileId,
-            f.fileName,
-            f.fileSaveName,
-            f.fileSize,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
-        FROM userFileList f
-        INNER JOIN webNoteUser u ON u.id = f.Id
+            f.file_id as fileId,
+            f.file_name as fileName,
+            f.file_save_name as fileSaveName,
+            f.file_size as fileSize,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM user_files f
+        INNER JOIN users u ON u.id = f.user_id
         WHERE u.username = #{username}
         <include refid="fileSearchFilters" />
-          AND (f.fileUploadDate &lt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
-               OR (f.fileUploadDate = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
-                   AND f.fileId <![CDATA[ < ]]> #{cursorId}))
-        ORDER BY f.fileUploadDate DESC, f.fileId DESC
+          AND (f.uploaded_at &lt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+               OR (f.uploaded_at = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+                   AND f.file_id <![CDATA[ < ]]> #{cursorId}))
+        ORDER BY f.uploaded_at DESC, f.file_id DESC
         LIMIT #{limit}
     </select>
 
     <!-- 이전 페이지(역방향) 조회: 기준점(cursor)보다 최신(이후)에 업로드된 파일 목록을 가져옴 -->
     <select id="selectPreviousFilesByUsername" resultType="HashMap">
+        <!-- FileMapper.selectPreviousFilesByUsername -->
         SELECT
-            f.fileId,
-            f.fileName,
-            f.fileSaveName,
-            f.fileSize,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
-            DATE_FORMAT(f.fileUploadDate, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
-        FROM userFileList f
-        INNER JOIN webNoteUser u ON u.id = f.Id
+            f.file_id as fileId,
+            f.file_name as fileName,
+            f.file_save_name as fileSaveName,
+            f.file_size as fileSize,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s') AS fileUploadDate,
+            DATE_FORMAT(f.uploaded_at, '%Y-%m-%d %H:%i:%s.%f') AS cursorDate
+        FROM user_files f
+        INNER JOIN users u ON u.id = f.user_id
         WHERE u.username = #{username}
         <include refid="fileSearchFilters" />
-          AND (f.fileUploadDate &gt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
-               OR (f.fileUploadDate = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
-                   AND f.fileId > #{cursorId}))
-        ORDER BY f.fileUploadDate ASC, f.fileId ASC
+          AND (f.uploaded_at &gt; STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+               OR (f.uploaded_at = STR_TO_DATE(#{cursorDate}, '%Y-%m-%d %H:%i:%s.%f')
+                   AND f.file_id > #{cursorId}))
+        ORDER BY f.uploaded_at ASC, f.file_id ASC
         LIMIT #{limit}
     </select>
 
     <!-- 파일 업로드 -->
     <insert id="insertFile">
-        INSERT INTO userFileList (Id, fileName, fileSaveName, fileDir, fileSize, fileUploadDate)
-        VALUES (#{userId}, #{fileName}, #{fileSaveName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
+        <!-- FileMapper.insertFile -->
+        INSERT INTO user_files (Id, file_name, file_save_name, file_dir, file_size, uploaded_at)
+        VALUES (#{userId}, #{file_name}, #{file_save_name}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
     </insert>
 
     <!-- 로그인 사용자가 소유한 파일만 다운로드 조회 -->
     <select id="selectFileForDownload" resultType="HashMap">
-        SELECT f.fileName, f.fileDir
-        FROM userFileList f
-                 INNER JOIN webNoteUser u ON u.id = f.Id
+        <!-- FileMapper.selectFileForDownload -->
+        SELECT f.file_name as fileName, f.file_dir as fileDir
+        FROM user_files f
+                 INNER JOIN users u ON u.id = f.user_id
         WHERE u.username = #{username}
-          AND f.fileSaveName = #{fileSaveName}
+          AND f.file_save_name = #{fileSaveName}
             LIMIT 1
     </select>
 
     <!-- 업로드 후 14일이 지난 파일 -->
     <select id="selectExpiredFiles" resultType="HashMap">
-        SELECT fileId, fileDir
-        FROM userFileList
-        WHERE fileUploadDate &lt; DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 14 DAY)
+        <!-- FileMapper.selectExpiredFiles -->
+        SELECT file_id as fileId, file_dir as fileDir
+        FROM user_files
+        WHERE uploaded_at &lt; DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 14 DAY)
     </select>
 
     <delete id="deleteFileById">
-        DELETE FROM userFileList WHERE fileId = #{fileId}
+        <!-- FileMapper.deleteFileById -->
+        DELETE FROM user_files WHERE file_id = #{fileId}
     </delete>
 </mapper>

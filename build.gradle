@@ -1,8 +1,8 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.1.1'
-	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.graalvm.buildtools.native' version '1.1.8'
+	id 'org.springframework.boot' version '3.3.4' // ◀ 가장 안정적인 3.3.x 최신 버전으로 변경
+	id 'io.spring.dependency-management' version '1.1.6' // ◀ 스프링 부트 3.3.x에 맞는 버전으로 변경
+	id 'org.graalvm.buildtools.native' version '0.10.3'
 	id 'war'
 }
 
@@ -20,76 +20,43 @@ repositories {
 }
 
 dependencies {
-	// Spring 웹 MVC
+	// Spring 웹 MVC 및 핵심
 	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	testCompileOnly 'org.projectlombok:lombok'
-	testAnnotationProcessor 'org.projectlombok:lombok'
-	// JSP 컴파일
+
+	// JSP 컴파일 및 JSTL 설정
 	implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
-	// Spring MVC 웹 개발
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-
-	// Lombok
-	compileOnly 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok'
-
-	// 설정 메타데이터
-	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-
-	// JSTL (Spring Boot 4 = Jakarta)
 	implementation 'jakarta.servlet:jakarta.servlet-api'
 	implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api'
 	implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl'
 
-	// MySQL
+	// Spring Security & JWT
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+	// 데이터베이스 (JPA, MyBatis, Drivers)
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
 
-	// Spring Boot에서 테스트할 때 필요한 여러 라이브러리를 묶어서 제공(서비스 테스트, 컨트롤러 테스트, 스프링 설정 테스트 등)
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	// 테스트 실행 환경에 필요한 의존성
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	// Spring Security가 적용된 애플리케이션을 테스트
-	testImplementation 'org.springframework.security:spring-security-test'
-	// 자바 코드를 테스트하는 기본 도구
-	testImplementation("org.junit.jupiter:junit-jupiter:5.9.3")
+	// Lombok (중복 모두 제거하고 한 번만 선언)
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
-	// tomcat
+	// 개발 도구 및 톰캣 제공 범위
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 
-	// JWT
-	// JWT 생성 및 검증을 위한 라이브러리
-	implementation 'io.jsonwebtoken:jjwt-api:0.12.3' // 핵심 JWT 인터페이스 & 빌더 API
-	implementation 'io.jsonwebtoken:jjwt-impl:0.12.3' // 실제 JWT 구현체
-	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3' // JWT를 JSON으로 직렬화/역직렬화 하는데 사용
-
-	// spring security
-	// 스프링 시큐리티를 사용하기 위한 스타터
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	// 타임리프에서 스프링 시큐리티를 사용하기 위한 의존성
-	// implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
-	// 스프링 시큐리티를 테스트 하기 위한 의존성
-	testImplementation 'org.springframework.security:spring-security-test'
-
-	// 엔티티 의존성 추가
-	// JPA 의존성 (필수)
-//	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	// 테스트/개발용 H2 데이터베이스 (사용 중인 DB 드라이버가 있다면 그것으로 유지)
-	runtimeOnly 'com.h2database:h2'
-
-	// MyBatis
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
-	implementation 'com.mysql:mysql-connector-j' // 사용하는 DB 드라이버로 변경
-
-	// file
-//	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	runtimeOnly 'org.postgresql:postgresql'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	annotationProcessor 'org.projectlombok:lombok'
+	// 테스트 의존성 (중복 제거 및 스프링 부트 제공 버전 사용)
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
