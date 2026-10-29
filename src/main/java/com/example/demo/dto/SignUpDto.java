@@ -7,7 +7,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class SignUpDto {
 
     private String username;

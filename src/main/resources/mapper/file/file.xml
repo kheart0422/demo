@@ -93,8 +93,8 @@
     <!-- 파일 업로드 -->
     <insert id="insertFile">
         <!-- FileMapper.insertFile -->
-        INSERT INTO user_files (Id, file_name, file_save_name, file_dir, file_size, uploaded_at)
-        VALUES (#{userId}, #{file_name}, #{file_save_name}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
+        INSERT INTO user_files (user_id, file_name, file_save_name, file_dir, file_size, uploaded_at)
+        VALUES (#{userId}, #{fileName}, #{fileSaveName}, #{fileDir}, #{fileSize}, CURRENT_TIMESTAMP)
     </insert>
 
     <!-- 로그인 사용자가 소유한 파일만 다운로드 조회 -->
@@ -113,7 +113,7 @@
         <!-- FileMapper.selectExpiredFiles -->
         SELECT file_id as fileId, file_dir as fileDir
         FROM user_files
-        WHERE uploaded_at &lt; DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 14 DAY)
+        WHERE uploaded_at &lt; DATE_SUB(CURRENT_TIMESTAMP, INTERVAL #{days} DAY)
     </select>
 
     <delete id="deleteFileById">

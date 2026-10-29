@@ -72,7 +72,7 @@
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
-                <tr><th class="ps-3 ps-md-4 py-3">파일 이름</th><th class="py-3">용량</th><th class="py-3">업로드 날짜</th><th class="py-3"></th></tr>
+                <tr><th class="ps-3 ps-md-4 py-3">파일 이름</th><th class="py-3">용량</th><th class="py-3">업로드 날짜</th><th class="py-3"></th><th class="py-3"></th></tr>
             </thead>
             <tbody>
             <c:choose>
@@ -89,7 +89,8 @@
                             <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a></td>
                             <td class="text-body-secondary"><c:out value="${file.fileSize}" /></td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
-                            <td><a class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
+                            <td><a id="previewBtn" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
+                            <td><a id="myNote" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">내 노트로 이동하기</a></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>

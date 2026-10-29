@@ -32,6 +32,10 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileService {
 
+    // 파일 삭제 주기
+    @Value("${file.expiration.days:14}")
+    private int expirationDays;
+
     // 한글 초성별 유니코드 음절 범위를 매핑한 정규식 검색용 맵 (예: 'ㄱ' -> "[가-깋]")
     private static final Map<Character, String> CHOSEONG_RANGES = Map.ofEntries(
             Map.entry('ㄱ', "[가-깋]"), Map.entry('ㄲ', "[까-낗]"),
@@ -237,7 +241,7 @@ public class FileService {
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Seoul")
     public void deleteExpiredFiles() {
         Path storageRoot = Paths.get(filePath).toAbsolutePath().normalize();
-        List<Map<String, Object>> expiredFiles = fileMapper.selectExpiredFiles();
+        List<Map<String, Object>> expiredFiles = fileMapper.selectExpiredFiles(expirationDays);
         int deletedRecords = 0;
         Set<Path> candidateDirectories = new LinkedHashSet<>();
 

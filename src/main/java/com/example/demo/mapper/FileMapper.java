@@ -45,6 +45,6 @@ public interface FileMapper {
     Map<String, Object> selectFileForDownload(@Param("username") String username, @Param("fileSaveName") String fileSaveName);
 
     // 업로드 시각 기준 14일이 지난 파일 조회 및 정리
-    List<Map<String, Object>> selectExpiredFiles();
+    List<Map<String, Object>> selectExpiredFiles(@Param("days") int days);
     int deleteFileById(@Param("fileId") long fileId);
 }
