@@ -43,6 +43,8 @@ public interface FileMapper {
 
     // 다운로드 시 사용자의 파일인지 확인
     Map<String, Object> selectFileForDownload(@Param("username") String username, @Param("fileSaveName") String fileSaveName);
+    // 내 노트로 이동
+    Map<String, Object> selectFileForNote(@Param("username") String username, @Param("fileId") long fileId);
 
     // 업로드 시각 기준 14일이 지난 파일 조회 및 정리
     List<Map<String, Object>> selectExpiredFiles(@Param("days") int days);

@@ -4,7 +4,35 @@
     const writing = document.getElementById('writingArea');
     const saveState = document.getElementById('saveState');
     const storageKey = 'webnote.document.v1';
+    const workspace = document.getElementById('noteWorkspace');
+    const pdfId = Number(workspace.dataset.pdfId || 0);
+    const pdfPageCount = Number(workspace.dataset.pdfPageCount || 0);
+    let currentPdfPage = 1;
     let saveTimer;
+
+    function showPdfPage(page) {
+        if (!pdfId || page < 1 || page > pdfPageCount) return;
+        currentPdfPage = page;
+        const image = document.getElementById('pdfPageImage');
+        image.alt = `PDF ${page}페이지`;
+        image.src = `${workspace.dataset.contextPath}/note/pdf/${pdfId}/page/${page}`;
+        document.getElementById('pageInfo').textContent = `${page} / ${pdfPageCount} 페이지`;
+        document.querySelectorAll('.pdf-thumbnail').forEach(item => item.classList.toggle('active', Number(item.dataset.pdfPage) === page));
+        document.getElementById('prevPdfPage').disabled = page === 1;
+        document.getElementById('nextPdfPage').disabled = page === pdfPageCount;
+    }
+
+    if (pdfId && pdfPageCount > 0) {
+        const image = document.getElementById('pdfPageImage');
+        image.addEventListener('load', () => {
+            document.getElementById('paper').style.aspectRatio = `${image.naturalWidth} / ${image.naturalHeight}`;
+            window.dispatchEvent(new Event('resize'));
+        });
+        document.querySelectorAll('.pdf-thumbnail').forEach(item => item.addEventListener('click', () => showPdfPage(Number(item.dataset.pdfPage))));
+        document.getElementById('prevPdfPage').addEventListener('click', () => showPdfPage(currentPdfPage - 1));
+        document.getElementById('nextPdfPage').addEventListener('click', () => showPdfPage(currentPdfPage + 1));
+        showPdfPage(1);
+    }
 
     function saveDocument() {
         const data = {
@@ -45,7 +73,7 @@
     document.getElementById('saveBtn').addEventListener('click', saveDocument);
     document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-    document.querySelectorAll('#noteList .note-item').forEach(item => item.addEventListener('click', () => {
+    document.querySelectorAll('#noteList .note-item[data-note-title]').forEach(item => item.addEventListener('click', () => {
         saveDocument();
         document.querySelectorAll('#noteList .note-item').forEach(note => note.classList.toggle('active', note === item));
         title.value = item.dataset.noteTitle;
@@ -58,7 +86,8 @@
     document.getElementById('noteSearch').addEventListener('input', event => {
         const query = event.target.value.trim().toLocaleLowerCase();
         document.querySelectorAll('#noteList .note-item').forEach(item => {
-            item.hidden = !item.dataset.noteTitle.toLocaleLowerCase().includes(query);
+            const label = item.dataset.noteTitle || item.querySelector('.note-item-title').textContent;
+            item.hidden = !label.toLocaleLowerCase().includes(query);
         });
     });
 

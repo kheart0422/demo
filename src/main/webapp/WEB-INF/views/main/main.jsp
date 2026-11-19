@@ -86,11 +86,14 @@
                             <c:url var="previewUrl" value="/main/preview">
                                 <c:param name="fileSaveName" value="${file.fileSaveName}" />
                             </c:url>
+                            <c:url var="noteUrl" value="/note">
+                                <c:param name="fileId" value="${file.fileId}" />
+                            </c:url>
                             <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a></td>
                             <td class="text-body-secondary"><c:out value="${file.fileSize}" /></td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
                             <td><a id="previewBtn" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
-                            <td><a id="myNote" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">내 노트로 이동하기</a></td>
+                            <td><a class="btn btn-outline-primary btn-sm" href="${noteUrl}">내 노트로 이동하기</a></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>

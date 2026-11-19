@@ -108,6 +108,16 @@
             LIMIT 1
     </select>
 
+    <!-- 내 노트로 이동 시 -->
+    <select id="selectFileForNote" resultType="HashMap">
+        <!-- FileMapper.selectFileForNote -->
+        SELECT f.file_name as fileName, f.file_dir as fileDir
+        FROM user_files f
+        INNER JOIN users u ON u.id = f.user_id
+        WHERE u.username = #{username} AND f.file_id = #{fileId}
+        LIMIT 1
+    </select>
+
     <!-- 업로드 후 14일이 지난 파일 -->
     <select id="selectExpiredFiles" resultType="HashMap">
         <!-- FileMapper.selectExpiredFiles -->

@@ -1,4 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -15,11 +16,13 @@
         <input id="docTitle" class="doc-title" aria-label="문서 제목" value="새 노트">
         <div class="top-actions"><span class="save-state" id="saveState">이 기기에 자동 저장됩니다</span><button class="button primary" id="saveBtn" type="button">저장</button></div>
     </header>
-    <div class="workspace">
+    <div class="workspace" id="noteWorkspace" data-context-path="${pageContext.request.contextPath}"
+         data-pdf-id="${pdfFileId}" data-pdf-page-count="${pdfPageCount}">
         <aside class="notes-panel" aria-label="내 노트 목록">
             <div class="notes-heading"><h2>내 노트</h2><button class="new-note" id="newNoteBtn" type="button" title="새 노트">＋</button></div>
             <input class="notes-search" id="noteSearch" type="search" placeholder="노트 검색" aria-label="노트 검색">
             <p class="notes-section-label">최근 노트</p>
+            <c:if test="${not empty pdfError}"><p class="pdf-error"><c:out value="${pdfError}" /></p></c:if>
             <div class="note-list" id="noteList">
                 <button class="note-item active" type="button" data-note-title="기획 회의 정리" data-note-content="회의 안건\n• 노트 작성 화면 개선\n• 다음 배포 일정 확인\n\n할 일\n화면 시안 공유하기\n사용자 의견 정리하기">
                     <span class="note-item-title">기획 회의 정리</span><span class="note-item-meta">오늘 · 오후 2:30　노트 작성 화면 개선</span>
@@ -36,7 +39,7 @@
             </div>
         </aside>
         <main class="stage">
-            <div class="stage-head"><span>내 노트&nbsp; / &nbsp;새 노트</span><span id="pageInfo">1 페이지</span></div>
+            <div class="stage-head"><span><c:out value="${not empty pdfFileName ? pdfFileName : '내 노트'}" /></span><span id="pageInfo">1 페이지</span></div>
             <div class="stage-toolbar">
                 <div class="tools" aria-label="작성 도구">
                     <button class="tool active" type="button" data-mode="pen" title="펜" aria-label="펜">✎</button><span class="tool-label">펜</span>
@@ -44,13 +47,26 @@
                     <button class="tool" type="button" data-mode="eraser" title="지우개" aria-label="지우개">▱</button><span class="tool-label">지우개</span>
                     <span class="tool-sep"></span><button class="tool" type="button" id="clearBtn" title="판서 지우기" aria-label="판서 지우기">⌫</button><span class="tool-label">지우기</span>
                 </div>
-                <div class="tool-actions"><button class="button" id="undoBtn" type="button" title="실행 취소">실행 취소</button><button class="button" id="printBtn" type="button">인쇄</button></div>
+                <div class="tool-actions"><button class="button" id="prevPdfPage" type="button" ${empty pdfFileId ? 'hidden' : ''}>이전</button><button class="button" id="nextPdfPage" type="button" ${empty pdfFileId ? 'hidden' : ''}>다음</button><button class="button" id="undoBtn" type="button" title="실행 취소">실행 취소</button><button class="button" id="printBtn" type="button">인쇄</button></div>
             </div>
-            <section class="page-wrap" aria-label="노트 페이지"><div class="paper" id="paper">
+            <div class="pdf-layout ${not empty pdfFileId ? 'pdf-mode' : ''}">
+                <c:if test="${not empty pdfFileId}">
+                    <div class="pdf-thumbnails" id="pdfThumbnails" aria-label="PDF 페이지 목록">
+                        <c:forEach var="page" begin="1" end="${pdfPageCount}">
+                            <button class="note-item pdf-thumbnail${page == 1 ? ' active' : ''}" type="button" data-pdf-page="${page}" aria-label="${page} 페이지 보기">
+                                <img class="thumbnail-image" src="${pageContext.request.contextPath}/note/pdf/${pdfFileId}/page/${page}?thumbnail=true" alt="PDF ${page}페이지 미리보기" loading="lazy">
+                                <span class="note-item-title">${page} 페이지</span>
+                            </button>
+                        </c:forEach>
+                    </div>
+                </c:if>
+                <section class="page-wrap ${not empty pdfFileId ? 'pdf-mode' : ''}" id="pageWrap" aria-label="노트 페이지"><div class="paper" id="paper">
+                <c:if test="${not empty pdfFileId}"><img class="pdf-page" id="pdfPageImage" alt="PDF 1페이지" src="${pageContext.request.contextPath}/note/pdf/${pdfFileId}/page/1"></c:if>
                 <h1 class="paper-title" id="paperTitle" contenteditable="true" spellcheck="false">오늘의 노트</h1>
                 <div class="writing-area" id="writingArea" contenteditable="true" spellcheck="true" data-placeholder="여기에 글을 입력하세요. 펜 도구를 선택하면 직접 판서할 수 있어요."></div>
                 <canvas class="ink-layer" id="inkLayer" aria-label="펜 판서 영역"></canvas>
-            </div></section>
+                </div></section>
+            </div>
         </main>
         <aside class="side-panel">
             <label class="panel-label">펜 색상</label>

@@ -237,6 +237,21 @@ public class FileService {
         return new DownloadFile(filePath, String.valueOf(file.get("fileName")));
     }
 
+    // 내 노트로 이동
+    public DownloadFile findFileForNote(String username, long fileId) throws IOException {
+        Map<String, Object> file = fileMapper.selectFileForNote(username, fileId);
+        if (file == null) {
+            throw new NoSuchFileException("파일을 찾을 수 없습니다.");
+        }
+
+        Path storageRoot = Paths.get(filePath).toAbsolutePath().normalize();
+        Path storedPath = Paths.get(String.valueOf(file.get("fileDir"))).toAbsolutePath().normalize();
+        if (!storedPath.startsWith(storageRoot) || !Files.isRegularFile(storedPath)) {
+            throw new NoSuchFileException("저장된 파일을 찾을 수 없습니다.");
+        }
+        return new DownloadFile(storedPath, String.valueOf(file.get("fileName")));
+    }
+
     /** 매 시간 만 14일이 지난 업로드 파일과 DB 정보를 정리합니다. */
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Seoul")
     public void deleteExpiredFiles() {
