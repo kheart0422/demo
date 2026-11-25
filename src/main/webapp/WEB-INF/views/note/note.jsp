@@ -14,29 +14,17 @@
     <header class="topbar">
         <div class="brand"><a class="back btn btn-outline-primary" href="${pageContext.request.contextPath}/main" aria-label="파일보관함" title="파일보관함">파일보관함</a><span class="brand-mark">✎</span><strong>내 노트</strong></div>
         <input id="docTitle" class="doc-title" aria-label="문서 제목" value="새 노트">
-        <div class="top-actions"><span class="save-state" id="saveState">이 기기에 자동 저장됩니다</span><button class="button primary" id="saveBtn" type="button">저장</button></div>
+        <div class="top-actions"><span class="save-state" id="saveState">서버에 자동 저장됩니다</span><button class="button" id="deleteNoteBtn" type="button" disabled>노트 삭제</button><button class="button primary" id="saveBtn" type="button">저장</button></div>
     </header>
     <div class="workspace" id="noteWorkspace" data-context-path="${pageContext.request.contextPath}"
-         data-pdf-id="${pdfFileId}" data-pdf-page-count="${pdfPageCount}">
+         data-pdf-id="${pdfFileId}" data-pdf-page-count="${pdfPageCount}"
+         data-initial-note-id="${initialNoteId}" data-notes-api="${pageContext.request.contextPath}/note/api/notes">
         <aside class="notes-panel" aria-label="내 노트 목록">
             <div class="notes-heading"><h2>내 노트</h2><button class="new-note" id="newNoteBtn" type="button" title="새 노트">＋</button></div>
             <input class="notes-search" id="noteSearch" type="search" placeholder="노트 검색" aria-label="노트 검색">
             <p class="notes-section-label">최근 노트</p>
             <c:if test="${not empty pdfError}"><p class="pdf-error"><c:out value="${pdfError}" /></p></c:if>
-            <div class="note-list" id="noteList">
-                <button class="note-item active" type="button" data-note-title="기획 회의 정리" data-note-content="회의 안건\n• 노트 작성 화면 개선\n• 다음 배포 일정 확인\n\n할 일\n화면 시안 공유하기\n사용자 의견 정리하기">
-                    <span class="note-item-title">기획 회의 정리</span><span class="note-item-meta">오늘 · 오후 2:30　노트 작성 화면 개선</span>
-                </button>
-                <button class="note-item" type="button" data-note-title="Spring Boot 공부" data-note-content="설정 메타데이터 처리 방식 정리\nConfiguration Processor\n빌드 결과물 경로 확인하기">
-                    <span class="note-item-title">Spring Boot 공부</span><span class="note-item-meta">오늘 · 오전 10:12　설정 메타데이터 정리</span>
-                </button>
-                <button class="note-item" type="button" data-note-title="이번 주 할 일" data-note-content="□ 노트 화면 정리\n□ 자료 읽기\n□ 주말 일정 확인">
-                    <span class="note-item-title">이번 주 할 일</span><span class="note-item-meta">어제 · 오후 6:45　노트 화면 정리</span>
-                </button>
-                <button class="note-item" type="button" data-note-title="아이디어 모음" data-note-content="떠오르는 생각을 자유롭게 적어 보세요.">
-                    <span class="note-item-title">아이디어 모음</span><span class="note-item-meta">10월 11일　떠오르는 생각 기록</span>
-                </button>
-            </div>
+            <div class="note-list" id="noteList" aria-live="polite"></div>
         </aside>
         <main class="stage">
             <div class="stage-head"><span><c:out value="${not empty pdfFileName ? pdfFileName : '내 노트'}" /></span><span id="pageInfo">1 페이지</span></div>
@@ -47,7 +35,7 @@
                     <button class="tool" type="button" data-mode="eraser" title="지우개" aria-label="지우개">▱</button><span class="tool-label">지우개</span>
                     <span class="tool-sep"></span><button class="tool" type="button" id="clearBtn" title="판서 지우기" aria-label="판서 지우기">⌫</button><span class="tool-label">지우기</span>
                 </div>
-                <div class="tool-actions"><button class="button" id="prevPdfPage" type="button" ${empty pdfFileId ? 'hidden' : ''}>이전</button><button class="button" id="nextPdfPage" type="button" ${empty pdfFileId ? 'hidden' : ''}>다음</button><button class="button" id="undoBtn" type="button" title="실행 취소">실행 취소</button><button class="button" id="printBtn" type="button">인쇄</button></div>
+                <div class="tool-actions"><button class="button" id="prevPdfPage" type="button">이전</button><button class="button" id="nextPdfPage" type="button">다음</button><button class="button" id="undoBtn" type="button" title="실행 취소">실행 취소</button><button class="button" id="printBtn" type="button">인쇄</button></div>
             </div>
             <div class="pdf-layout ${not empty pdfFileId ? 'pdf-mode' : ''}">
                 <c:if test="${not empty pdfFileId}">
@@ -67,6 +55,7 @@
                 <canvas class="ink-layer" id="inkLayer" aria-label="펜 판서 영역"></canvas>
                 </div></section>
             </div>
+            <button class="button primary floating-add-page" id="addPageBtn" type="button" disabled ${not empty pdfFileId ? 'hidden' : ''} aria-label="페이지 추가">＋ 페이지 추가</button>
         </main>
         <aside class="side-panel">
             <label class="panel-label">펜 색상</label>

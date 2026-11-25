@@ -93,7 +93,7 @@
                             <td class="text-body-secondary"><c:out value="${file.fileSize}" /></td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
                             <td><a id="previewBtn" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
-                            <td><a class="btn btn-outline-primary btn-sm" href="${noteUrl}">내 노트로 이동하기</a></td>
+                            <td><a id="fileForNote" class="btn btn-outline-primary btn-sm" href="${noteUrl}">내 노트로 이동하기</a></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>

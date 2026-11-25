@@ -11,21 +11,22 @@ button { color: inherit; }
 .brand strong { font-size: 16px; }
 .doc-title { width: min(420px, 40vw); padding: 9px 12px; border: 1px solid transparent; border-radius: 8px; color: var(--ink); background: transparent; font-weight: 600; }
 .doc-title:hover, .doc-title:focus { outline: none; border-color: var(--line); background: #fafbfc; }
+.doc-title[readonly] { color: var(--muted); cursor: not-allowed; }
 .top-actions { display: flex; align-items: center; gap: 9px; }
 .save-state { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .button { min-height: 38px; padding: 0 13px; border: 1px solid var(--line); border-radius: 9px; background: white; cursor: pointer; font-size: 13px; font-weight: 600; }
 .button:hover { background: #f7f8fb; }
 .button.primary { color: white; border-color: var(--accent); background: var(--accent); }
 .button.primary:hover { background: #4357ca; }
-.workspace { min-height: calc(100vh - 68px); display: grid; grid-template-columns: 248px minmax(0, 1fr) 218px; }
-.notes-panel { padding: 22px 14px; background: #fff; border-right: 1px solid var(--line); }
+.workspace { height: calc(100vh - 68px); min-height: 0; display: grid; grid-template-columns: 248px minmax(0, 1fr) 218px; }
+.notes-panel { min-height: 0; padding: 22px 14px; display: flex; flex-direction: column; background: #fff; border-right: 1px solid var(--line); }
 .notes-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 3px 15px; }
 .notes-heading h2 { margin: 0; font-size: 14px; }
 .new-note { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--accent); font-size: 19px; cursor: pointer; }
 .notes-search { width: 100%; height: 36px; margin-bottom: 16px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; outline: none; background: #f8f9fb; font-size: 12px; }
 .notes-search:focus { border-color: #aeb8f5; background: #fff; }
 .notes-section-label { margin: 14px 4px 8px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
-.note-list { display: flex; flex-direction: column; gap: 5px; }
+.note-list { min-height: 0; display: flex; flex: 1 1 auto; flex-direction: column; gap: 5px; overflow-y: auto; overscroll-behavior: contain; }
 .note-item { width: 100%; padding: 11px 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; cursor: pointer; }
 .note-item:hover { background: #f7f8fb; }
 .note-item.active { border-color: #e0e4ff; background: #f1f2ff; }
@@ -38,14 +39,19 @@ button { color: inherit; }
 .tool.active { color: var(--accent); background: #eef0ff; box-shadow: inset 0 0 0 1px #dfe3ff; }
 .tool-sep { width: 1px; height: 24px; margin: 0 4px; background: var(--line); }
 .tool-label { font-size: 11px; color: var(--muted); }
-.stage { min-width: 0; padding: 26px clamp(16px, 4vw, 64px) 50px; overflow: auto; }
+.stage { min-width: 0; min-height: 0; padding: 26px clamp(16px, 4vw, 64px) 50px; display: flex; flex-direction: column; overflow: hidden; }
 .stage-head { max-width: 850px; margin: 0 auto 16px; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
 .stage-toolbar { max-width: 850px; min-height: 48px; margin: 0 auto 14px; padding: 5px 10px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.pdf-layout { min-height: 0; flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.pdf-layout:not(.pdf-mode) { padding-bottom: 12px; }
 .tool-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .eraser-size-control { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .eraser-size-control input { width: 90px; accent-color: var(--accent); }
 .eraser-size-control output { min-width: 30px; color: var(--ink); font-size: 10px; }
 .page-wrap { position: relative; width: min(850px, 100%); min-height: 1040px; margin: 0 auto; overflow: hidden; background: #fff; box-shadow: 0 8px 32px #28334a12, 0 1px 4px #28334a12; }
+.page-wrap.general-mode { display: flex; flex-direction: column; gap: 24px; width: min(850px, 100%); min-height: 0; margin: 0 auto; overflow: visible; background: transparent; box-shadow: none; }
+.general-mode .note-paper { position: relative; flex: 0 0 auto; width: 100%; min-height: 1040px; margin: 0; overflow: hidden; background-color: #fff; box-shadow: 0 8px 32px #28334a12, 0 1px 4px #28334a12; }
+.general-mode .note-paper::after { content: attr(data-page-label); position: absolute; top: 18px; right: 24px; z-index: 3; color: var(--muted); font-size: 12px; }
 .paper { position: relative; min-height: 1040px; padding: 76px 82px; background-image: linear-gradient(#fff 39px, #e8edf5 40px); background-size: 100% 40px; background-position: 0 82px; }
 .pdf-page { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; object-fit: fill; background: #fff; pointer-events: none; }
 .pdf-layout.pdf-mode { display: flex; align-items: flex-start; gap: 12px; width: 100%; }
@@ -56,6 +62,8 @@ button { color: inherit; }
 .pdf-thumbnail { flex: 0 0 auto; width: 100%; padding: 5px; }
 .thumbnail-image { display: block; width: 100%; height: auto; aspect-ratio: 0.707; margin: 0 auto 5px; object-fit: contain; border: 1px solid var(--line); background: white; }
 .pdf-error { padding: 8px; border-radius: 8px; color: #a32732; background: #fff0f1; font-size: 11px; }
+.floating-add-page { position: fixed; right: 30px; bottom: 28px; z-index: 10; min-height: 48px; padding: 0 20px; border-radius: 999px; box-shadow: 0 8px 24px #29344c30; }
+@media (min-width: 1051px) { .floating-add-page { right: 246px; } }
 .paper:before { content: ""; position: absolute; top: 0; bottom: 0; left: 62px; width: 1px; background: #f1d9dc; }
 .paper-title { position: relative; z-index: 1; width: 100%; min-height: 48px; margin: 0 0 19px; padding: 0; outline: none; border: 0; background: transparent; font-size: 29px; line-height: 40px; font-weight: 700; }
 .writing-area { position: relative; z-index: 1; min-height: 780px; outline: none; font-size: 16px; line-height: 40px; overflow-wrap: anywhere; white-space: pre-wrap; }
@@ -78,5 +86,5 @@ button { color: inherit; }
 .panel-note { margin-top: 20px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .mobile-tools { display: none; }
 @media (max-width: 1050px) { .workspace { grid-template-columns: 220px minmax(0, 1fr); } .side-panel { display: none; } .topbar { padding: 0 15px; } .brand { min-width: 0; } .save-state { display: none; } .stage { padding: 20px 12px 35px; } .paper { padding: 58px 46px; background-position: 0 64px; } .paper:before { left: 34px; } .page-wrap, .paper { min-height: 900px; } }
-@media (max-width: 700px) { .topbar { height: 60px; gap: 8px; } .back { display: none; } .brand { gap: 7px; } .brand strong { display: none; } .doc-title { width: min(48vw, 240px); font-size: 13px; } .top-actions { gap: 5px; } .top-actions .button { min-height: 34px; padding: 0 9px; font-size: 12px; } .workspace { min-height: calc(100vh - 60px); grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .notes-panel { padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); } .notes-heading { margin-bottom: 8px; } .notes-search { margin-bottom: 8px; } .notes-section-label { display: none; } .note-list { flex-direction: row; overflow-x: auto; } .note-item { flex: 0 0 150px; } .stage { grid-row: 2; padding: 12px 8px 18px; } .stage-toolbar { position: sticky; top: 0; z-index: 4; gap: 4px; padding: 4px 6px; flex-wrap: wrap; } .tool { width: 32px; height: 34px; } .tool-label { font-size: 10px; } .tool-actions .button { min-height: 32px; padding: 0 8px; font-size: 11px; } .tool-sep { margin: 0 1px; } .eraser-size-control { gap: 3px; font-size: 10px; } .eraser-size-control input { width: 58px; } .eraser-size-control output { min-width: 25px; } .page-wrap, .paper { min-height: 820px; } .paper { padding: 48px 34px; background-position: 0 54px; } .paper:before { left: 25px; } .paper-title { font-size: 24px; } }
-@media print { body { background: white; } .topbar, .notes-panel, .tools, .side-panel, .stage-head, .stage-toolbar { display: none !important; } .workspace, .stage { display: block; padding: 0; overflow: visible; } .page-wrap { width: 100%; min-height: 0; box-shadow: none; page-break-after: always; } .paper { min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+@media (max-width: 700px) { .topbar { height: 60px; gap: 8px; } .back { display: none; } .brand { gap: 7px; } .brand strong { display: none; } .doc-title { width: min(48vw, 240px); font-size: 13px; } .top-actions { gap: 5px; } .top-actions .button { min-height: 34px; padding: 0 9px; font-size: 12px; } .workspace { height: calc(100vh - 60px); grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .notes-panel { min-height: 0; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); } .notes-heading { margin-bottom: 8px; } .notes-search { margin-bottom: 8px; } .notes-section-label { display: none; } .note-list { flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; } .note-item { flex: 0 0 150px; } .stage { grid-row: 2; padding: 12px 8px 18px; } .stage-toolbar { position: relative; z-index: 4; gap: 4px; padding: 4px 6px; flex-wrap: wrap; } .tool { width: 32px; height: 34px; } .tool-label { font-size: 10px; } .tool-actions .button { min-height: 32px; padding: 0 8px; font-size: 11px; } .tool-sep { margin: 0 1px; } .eraser-size-control { gap: 3px; font-size: 10px; } .eraser-size-control input { width: 58px; } .eraser-size-control output { min-width: 25px; } .page-wrap, .paper { min-height: 820px; } .general-mode .note-paper { min-height: 820px; } .paper { padding: 48px 34px; background-position: 0 54px; } .paper:before { left: 25px; } .paper-title { font-size: 24px; } .floating-add-page { right: 16px; bottom: 16px; min-height: 44px; padding: 0 16px; } }
+@media print { body { background: white; } .topbar, .notes-panel, .tools, .side-panel, .stage-head, .stage-toolbar, .floating-add-page { display: none !important; } .workspace, .stage, .pdf-layout { display: block; height: auto; padding: 0; overflow: visible; } .page-wrap { width: 100%; min-height: 0; box-shadow: none; page-break-after: always; } .paper { min-height: 100vh; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
