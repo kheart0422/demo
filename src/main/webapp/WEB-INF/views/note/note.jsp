@@ -14,7 +14,12 @@
     <header class="topbar">
         <div class="brand"><a class="back btn btn-outline-primary" href="${pageContext.request.contextPath}/main" aria-label="파일보관함" title="파일보관함">파일보관함</a><span class="brand-mark">✎</span><strong>내 노트</strong></div>
         <input id="docTitle" class="doc-title" aria-label="문서 제목" value="새 노트">
-        <div class="top-actions"><span class="save-state" id="saveState">서버에 자동 저장됩니다</span><button class="button" id="deleteNoteBtn" type="button" disabled>노트 삭제</button><button class="button primary" id="saveBtn" type="button">저장</button></div>
+        <div class="top-actions">
+            <span class="save-state" id="saveState">서버에 자동 저장됩니다</span>
+            <button class="button" id="downloadPdfBtn" type="button" disabled>PDF로 다운로드</button>
+            <button class="button" id="deleteNoteBtn" type="button" disabled>노트 삭제</button>
+            <button class="button primary" id="saveBtn" type="button">저장</button>
+        </div>
     </header>
     <div class="workspace" id="noteWorkspace" data-context-path="${pageContext.request.contextPath}"
          data-pdf-id="${pdfFileId}" data-pdf-page-count="${pdfPageCount}"

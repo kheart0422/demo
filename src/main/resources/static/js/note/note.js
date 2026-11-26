@@ -8,6 +8,8 @@
     const saveState = document.getElementById('saveState');
     // 노트 삭제 버튼
     const deleteNoteButton = document.getElementById('deleteNoteBtn');
+    // pdf 다운로드
+    const downloadPdfButton = document.getElementById('downloadPdfBtn');
     // 노트 작업 공간
     const workspace = document.getElementById('noteWorkspace');
     // 노트 목록 영역
@@ -536,6 +538,8 @@
 
         // 삭제 버튼 활성화
         deleteNoteButton.disabled = false;
+        // pdf 다운로드 버튼 활성화
+        downloadPdfButton.disabled = false;
 
         // 선택한 노트의 기존 데이터 화면에 표시
         title.value = note.title || '새 노트';
@@ -645,6 +649,226 @@
         );
     }
 
+    // JPEG 이미지 배열을 받아 PDF 1.4 바이너리(Uint8Array)를 직접 생성합니다.
+    function createPdfFromJpegs(images, width) {
+        // 문자열을 UTF-8 바이트 배열로 변환하기 위한 인코더와 바이트 조각 저장 배열입니다.
+        const encoder = new TextEncoder();
+        const chunks = [];
+        let byteLength = 0;
+
+        // 문자열 또는 Uint8Array를 chunks에 추가하고 누적 바이트 길이를 갱신합니다.
+        const append = value => {
+            const bytes = typeof value === 'string' ? encoder.encode(value) : value;
+            chunks.push(bytes);
+            byteLength += bytes.length;
+        };
+
+        // PDF 교차 참조 테이블(xref)에서 사용할 객체별 시작 바이트 오프셋 배열입니다(0번은 더미).
+        const offsets = [0];
+
+        // PDF 헤더 및 이진 데이터 포함을 알리는 주석 마커를 기록합니다.
+        append('%PDF-1.4\n%âãÏÓ\n');
+
+        // 일반 PDF 객체를 기록하고 해당 객체의 바이트 오프셋을 저장합니다.
+        const object = (id, body) => {
+            offsets[id] = byteLength;
+            append(`${id} 0 obj\n${body}\nendobj\n`);
+        };
+
+        // 각 이미지마다 페이지(3+3n), 이미지 XObject(4+3n), 콘텐츠 스트림(5+3n) ID를 할당합니다.
+        const pageIds = images.map((_, index) => 3 + index * 3);
+
+        // 1번 객체: 문서 루트 카탈로그, 2번 객체: 전체 페이지 트리 노드를 생성합니다.
+        object(1, '<< /Type /Catalog /Pages 2 0 R >>');
+        object(2, `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${images.length} >>`);
+
+        // 각 페이지 이미지를 PDF 페이지 객체, JPEG XObject, 그리기 명령 스트림으로 구성합니다.
+        images.forEach((image, index) => {
+            const pageId = pageIds[index];
+            const imageId = pageId + 1;
+            const contentId = pageId + 2;
+
+            // 지정된 PDF 페이지 폭(width)에 맞춰 원본 비율대로 페이지 높이를 계산합니다.
+            const pageHeight = width * image.height / image.width;
+
+            // 좌표 변환 행렬(cm)로 페이지 전체 영역에 /ImN 이미지를 그리는 PDF 콘텐츠 스트림입니다.
+            const content = `q\n${width} 0 0 ${pageHeight} 0 0 cm\n/Im${index + 1} Do\nQ\n`;
+            const contentBytes = encoder.encode(content);
+
+            // 페이지 객체: 크기(MediaBox), 이미지 리소스 참조, 콘텐츠 스트림을 연결합니다.
+            object(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${pageHeight}] /Resources << /XObject << /Im${index + 1} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+
+            // JPEG(/DCTDecode) 원본 바이트를 담은 이미지 XObject 스트림 객체를 기록합니다.
+            offsets[imageId] = byteLength;
+            append(`${imageId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`);
+            append(image.bytes);
+            append('\nendstream\nendobj\n');
+
+            // 페이지 그리기 명령이 담긴 콘텐츠 스트림 객체를 기록합니다.
+            offsets[contentId] = byteLength;
+            append(`${contentId} 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n`);
+            append(contentBytes);
+            append('endstream\nendobj\n');
+        });
+
+        // 객체 위치 색인표(xref)와 트레일러, 파일 끝 마커(%%EOF)를 작성합니다.
+        const xrefOffset = byteLength;
+        append(`xref\n0 ${offsets.length}\n0000000000 65535 f \n`);
+        for (let id = 1; id < offsets.length; id++) append(`${String(offsets[id]).padStart(10, '0')} 00000 n \n`);
+        append(`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+        // 모든 바이트 조각을 하나의 연속된 Uint8Array로 합쳐 반환합니다.
+        const result = new Uint8Array(byteLength);
+        let cursor = 0;
+        chunks.forEach(chunk => { result.set(chunk, cursor); cursor += chunk.length; });
+        return result;
+    }
+
+// HTMLImageElement가 이미 로드되었는지 확인하고, 아니면 로드 완료 또는 오류를 기다리는 프로미스를 반환합니다.
+    const waitForImage = image => image.complete && image.naturalWidth
+        ? Promise.resolve()
+        : new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(new Error('페이지 이미지를 불러오지 못했습니다.'));
+        });
+
+// 현재 활성 노트의 모든 페이지를 렌더링해 JPEG로 변환한 뒤 PDF 파일로 다운로드합니다.
+    async function exportPdf() {
+        // 활성화된 노트가 없으면 내보내기를 중단합니다.
+        if (!activeNoteId) return;
+
+        // 중복 클릭 방지를 위해 다운로드 버튼을 비활성화하고 진행 상태를 표시합니다.
+        downloadPdfButton.disabled = true;
+        saveState.textContent = 'PDF를 준비하는 중…';
+
+        // 작업 완료 후 원래 보던 PDF 페이지로 복구하기 위해 현재 페이지 번호를 보관합니다.
+        const restorePage = currentPdfPage;
+
+        try {
+            // 내보내기 전 현재 노트의 변경 사항을 먼저 저장합니다.
+            await flushCurrentNote();
+
+            // PDF 기반 노트인지 일반 노트인지에 따라 총 페이지 수와 기준 해상도를 설정합니다.
+            const pageCount = activeNoteIsPdf ? pdfPageCount : activeNotePageCount;
+            const outputWidth = 1190;
+            const jpegPages = [];
+
+            // 1페이지부터 마지막 페이지까지 순차적으로 캔버스에 그린 뒤 JPEG 바이트로 수집합니다.
+            for (let page = 1; page <= pageCount; page++) {
+                if (activeNoteIsPdf) {
+                    // PDF 노트인 경우 해당 페이지로 전환하고 배경 이미지, 필기 스트로크, 삽입 이미지를 모두 불러옵니다.
+                    currentPdfPage = page;
+                    window.NoteDrawing.setPageNumber(page);
+                    setPdfPageImage(page);
+                    await waitForImage(document.getElementById('pdfPageImage'));
+                    await loadPageStrokes(page, activeNoteId);
+
+                    // 페이지에 포함된 이미지들의 디코딩이 끝날 때까지 대기합니다.
+                    const images = window.NoteDrawing.getImages(page);
+                    await Promise.all(images.map(item => {
+                        const image = new Image();
+                        image.src = item.dataUrl;
+                        return image.decode();
+                    }));
+
+                    // 캔버스 다시 그리기 및 두 번의 requestAnimationFrame으로 렌더링 반영을 기다립니다.
+                    window.NoteDrawing.redraw();
+                    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                }
+
+                // 현재 페이지에 해당하는 DOM 요소(.paper 또는 .note-paper)를 찾습니다.
+                const paper = activeNoteIsPdf
+                    ? document.getElementById('paper')
+                    : document.querySelector(`.note-paper[data-page-number="${page}"]`);
+                if (!paper) throw new Error(`${page}페이지를 찾을 수 없습니다.`);
+
+                // 출력 캔버스 높이를 계산합니다(PDF 노트는 원본 비율 유지, 일반 노트는 A4 비율 근사치 1684px).
+                const pdfImage = activeNoteIsPdf ? document.getElementById('pdfPageImage') : null;
+                const outputHeight = activeNoteIsPdf
+                    ? Math.round(outputWidth * pdfImage.naturalHeight / pdfImage.naturalWidth)
+                    : 1684;
+
+                // 오프스크린 캔버스를 생성하고 흰색 배경을 채웁니다.
+                const canvas = document.createElement('canvas');
+                canvas.width = outputWidth;
+                canvas.height = outputHeight;
+                const context = canvas.getContext('2d');
+                context.fillStyle = '#fff';
+                context.fillRect(0, 0, outputWidth, outputHeight);
+
+                if (activeNoteIsPdf) {
+                    // PDF 노트: 원본 PDF 페이지 이미지를 캔버스 전체에 그립니다.
+                    context.drawImage(pdfImage, 0, 0, outputWidth, outputHeight);
+                } else {
+                    // 일반 노트: 가로 줄눈선과 왼쪽 세로 여백선을 그립니다.
+                    context.strokeStyle = '#e8edf5';
+                    context.lineWidth = 1;
+                    for (let y = 60; y < outputHeight; y += 60) {
+                        context.beginPath(); context.moveTo(0, y); context.lineTo(outputWidth, y); context.stroke();
+                    }
+                    context.strokeStyle = '#f1d9dc';
+                    context.beginPath(); context.moveTo(94, 0); context.lineTo(94, outputHeight); context.stroke();
+
+                    // 첫 페이지 상단에 노트 제목을 출력합니다.
+                    context.fillStyle = '#202633';
+                    context.font = 'bold 36px sans-serif';
+                    context.fillText(page === 1 ? (document.getElementById('paperTitle').textContent || '') : '', 123, 118, outputWidth - 180);
+
+                    // 텍스트 영역(.writing-area)의 내용을 줄바꿈 너비를 고려해 캔버스에 그립니다.
+                    const text = paper.querySelector('.writing-area')?.textContent || '';
+                    context.font = '20px sans-serif';
+                    context.textBaseline = 'top';
+                    const maxWidth = outputWidth - 210;
+                    let y = 170;
+                    text.split('\n').forEach(line => {
+                        let row = '';
+                        for (const character of line) {
+                            const next = row + character;
+                            if (row && context.measureText(next).width > maxWidth) {
+                                context.fillText(row, 123, y); row = character; y += 60;
+                            } else row = next;
+                        }
+                        context.fillText(row, 123, y); y += 60;
+                    });
+                }
+
+                // 필기/드로잉 레이어(.ink-layer)가 있으면 배경 위에 합성합니다.
+                const ink = paper.querySelector('.ink-layer');
+                if (ink) context.drawImage(ink, 0, 0, outputWidth, outputHeight);
+
+                // 완성된 페이지 캔버스를 품질 0.92의 JPEG Blob으로 변환해 바이트 배열로 저장합니다.
+                const data = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+                if (!data) throw new Error('PDF 페이지 변환에 실패했습니다.');
+                jpegPages.push({ width: outputWidth, height: outputHeight, bytes: new Uint8Array(await data.arrayBuffer()) });
+            }
+
+            // 수집된 JPEG 페이지들로 A4 폭(595.28pt) 기준 PDF 파일을 생성하고 브라우저 다운로드를 실행합니다.
+            const pdf = createPdfFromJpegs(jpegPages, 595.28);
+            const url = URL.createObjectURL(new Blob([pdf], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${(title.value.trim() || '새 노트').replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+            link.click();
+
+            // 다운로드 트리거 후 1초 뒤 임시 Blob URL을 해제해 메모리를 정리합니다.
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            saveState.textContent = 'PDF 다운로드가 시작되었습니다';
+        } catch (error) {
+            // 내보내기 과정 중 오류가 발생하면 로그와 상태 메시지를 남기고 알림을 표시합니다.
+            console.error('PDF 내보내기 실패', error);
+            saveState.textContent = 'PDF 다운로드 실패';
+            alert('PDF를 만들지 못했습니다. 저장 상태와 페이지 이미지를 확인해 주세요.');
+        } finally {
+            // PDF 노트였을 경우 사용자가 원래 보던 페이지 상태로 복구합니다.
+            if (activeNoteIsPdf && restorePage !== currentPdfPage) {
+                setPdfPageImage(restorePage);
+                await loadPageStrokes(restorePage, activeNoteId);
+            }
+            // 노트 활성화 상태에 맞춰 다운로드 버튼 활성 여부를 복원합니다.
+            downloadPdfButton.disabled = !activeNoteId;
+        }
+    }
+
     // 노트 기본 정보의 자동 저장을 예약하는 함수
     function scheduleDocumentSave() {
 
@@ -752,6 +976,7 @@
                 window.NoteDrawing.clear();
 
                 deleteNoteButton.disabled = true;
+                downloadPdfButton.disabled = true;
 
                 currentPdfPage = 1;
                 activeNotePageCount = 1;
@@ -888,6 +1113,7 @@
                 saveState.textContent = '노트가 삭제되었습니다';
 
                 deleteNoteButton.disabled = true;
+                downloadPdfButton.disabled = true;
 
                 updatePageControls();
             }
@@ -895,6 +1121,7 @@
         } catch (error) {
             // 삭제 실패 시 버튼 다시 활성화
             deleteNoteButton.disabled = false;
+            downloadPdfButton.disabled = false;
 
             saveState.textContent = '노트를 삭제하지 못했습니다';
             console.error('노트 삭제 실패', error);
@@ -1044,6 +1271,9 @@
 
     // 저장 버튼 클릭 시 현재 노트의 모든 변경 사항 저장
     document.getElementById('saveBtn').addEventListener('click', flushCurrentNote);
+
+    // 현재 노트의 모든 페이지를 PDF 파일로 내려받기
+    downloadPdfButton.addEventListener('click', exportPdf);
 
     // 인쇄 버튼 클릭 시 브라우저 인쇄 기능 실행
     document.getElementById('printBtn').addEventListener('click', () => window.print());
