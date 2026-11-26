@@ -74,6 +74,7 @@
             const paper = firstPaper.cloneNode(true);
 
             paper.removeAttribute('id'); // 중복 ID 방지
+            paper.removeAttribute('data-image-interaction-bound'); // 첨부한 이미지 파일 삭제
             paper.dataset.generatedPage = 'true'; // JavaScript로 생성된 페이지임을 표시
             paper.dataset.pageNumber = String(page);
             paper.dataset.pageLabel = `${page} 페이지`;
@@ -221,6 +222,13 @@
                     Array.isArray(data) ? data : data.strokes,
                     page
                 );
+                // NoteDrawing 전역 객체에 현재 페이지의 이미지 데이터를 설정합니다.
+                window.NoteDrawing.setImages(
+                    // data가 배열이면 빈 배열을 넘기고, 객체 형태라면 data.images를 전달합니다.
+                    Array.isArray(data) ? [] : data.images,
+                    // 이미지를 적용할 대상 페이지 번호입니다.
+                    page
+                );
 
                 // 일반 노트인 경우 작성했던 텍스트도 복원
                 if (!activeNoteIsPdf && !Array.isArray(data)) {
@@ -261,6 +269,7 @@
 
         // 현재 페이지의 판서 데이터 가져오기
         const strokes = window.NoteDrawing.getStrokes(page);
+        const images = window.NoteDrawing.getImages(page);
 
         try {
             // 서버에 해당 페이지의 판서 데이터 전송
@@ -276,6 +285,7 @@
                     // 서버에 전달할 데이터를 JSON 문자열로 변환
                     body: JSON.stringify({
                         strokes,
+                        images,
 
                         // PDF 노트는 텍스트를 저장하지 않음
                         // 일반 노트는 해당 페이지의 글쓰기 영역 내용 저장
@@ -930,6 +940,103 @@
         window.NoteDrawing.setActivePage(currentPdfPage);
 
         updatePageControls();
+    });
+
+    // 문서 전체에 클립보드 붙여넣기 이벤트를 등록합니다.
+    document.addEventListener('paste', event => {
+        // 활성화된 노트가 없으면 붙여넣기 처리를 중단
+        if (!activeNoteId) return;
+        // 붙여넣기 발생 대상 요소를 확인하고, 입력 필드(input, textarea, select) 내부라면 기본 동작을 유지
+        const target = event.target;
+        if (target instanceof Element && target.closest('input, textarea, select')) return;
+        // 클립보드 항목 중 이미지 타입('image/') 항목
+        const clipboardItems = [...(event.clipboardData?.items || [])];
+        const imageItem = clipboardItems.find(item => item.type.startsWith('image/'));
+        if (!imageItem) return;
+        // 클립보드 이미지 항목을 파일 객체로 변환하고, 없으면 중단합니다.
+        const imageFile = imageItem.getAsFile();
+        if (!imageFile) return;
+        event.preventDefault();
+        // 붙여넣은 위치가 특정 페이지(.paper)의 드로잉 레이어(.ink-layer) 내부인지 확인
+        const targetCanvas = target instanceof Element
+            ? target.closest('.paper')?.querySelector('.ink-layer')
+            : null;
+        // 대상 캔버스가 있으면 해당 페이지 번호를 활성 페이지로 설정합니다.
+        if (targetCanvas) window.NoteDrawing.setActivePage(Number(targetCanvas.dataset.pageNumber || 1));
+        // 클립보드 이미지를 노드에 추가하고, 실패 시 상태 메시지와 콘솔 에러를 출력
+        window.NoteDrawing.addClipboardImage(imageFile).catch(error => {
+            saveState.textContent = '이미지를 붙여넣지 못했습니다';
+            console.error('클립보드 이미지 붙여넣기 실패', error);
+        });
+    });
+
+    // // 노트 이미지 드래그 앤 드롭을 식별하기 위한 커스텀 MIME 타입과 페이지 래퍼 요소를 지정
+    const imageDragType = 'application/x-web-note-image';
+    const pageWrap = document.getElementById('pageWrap');
+    // 페이지 영역 위로 드래그 중일 때의 동작을 처리합니다.
+    pageWrap.addEventListener('dragover', event => {
+        // 드래그 중인 데이터 타입에 커스텀 이미지 타입이 포함되어 있는지 확인
+        const types = [...(event.dataTransfer?.types || [])];
+        if (!types.includes(imageDragType)) return;
+        // 현재 마우스가 위치한 페이지(.paper) 요소를 찾고, 없으면 중단
+        const paper = event.target instanceof Element ? event.target.closest('.paper') : null;
+        if (!paper) return;
+        // 드롭을 허용하기 위해 기본 동작을 막고 복사 효과를 지정
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        // 드롭 대상 페이지임을 시각적으로 표시하기 위해 클래스를 추가
+        paper.classList.add('note-drop-target');
+    });
+    // 드래그가 페이지 영역을 벗어날 때 드롭 대상 강조 스타일을 제거
+    pageWrap.addEventListener('dragleave', event => {
+        const paper = event.target instanceof Element ? event.target.closest('.paper') : null;
+        // relatedTarget이 현재 paper 내부가 아닐 때만 강조 클래스를 제거
+        if (paper && !paper.contains(event.relatedTarget)) paper.classList.remove('note-drop-target');
+    });
+
+    // 페이지 영역에 파일을 드롭했을 때의 비동기 처리
+    pageWrap.addEventListener('drop', async event => {
+        const transfer = event.dataTransfer;
+        // 커스텀 타입 또는 'web-note-image:' 접두사가 붙은 일반 텍스트에서 파일 ID를 추출
+        const customFileId = transfer?.getData(imageDragType);
+        const plainText = transfer?.getData('text/plain') || '';
+        const fileId = customFileId || (plainText.startsWith('web-note-image:') ? plainText.slice('web-note-image:'.length) : '');
+        if (!fileId) return;
+        // 드롭된 위치의 페이지 요소와 활성 노트 존재 여부를 확인합니다.
+        const paper = event.target instanceof Element ? event.target.closest('.paper') : null;
+        if (!paper || !activeNoteId) return;
+        // 기본 드롭 동작을 막고 드롭 대상 강조 클래스를 제거
+        event.preventDefault();
+        paper.classList.remove('note-drop-target');
+        // 대상 페이지 번호와 페이지 요소의 화면상 좌표 범위를 계산
+        const canvas = paper.querySelector('.ink-layer');
+        const pageNumber = Number(canvas?.dataset.pageNumber || currentPdfPage || 1);
+        const bounds = paper.getBoundingClientRect();
+        // 드롭된 페이지를 활성 페이지로 전환합니다.
+        window.NoteDrawing.setActivePage(pageNumber);
+        try {
+            // 서버에서 해당 파일 ID의 이미지 리소스를 요청
+            const response = await fetch(
+                `${workspace.dataset.contextPath}/main/image/${encodeURIComponent(fileId)}`,
+                { credentials: 'same-origin' }
+            );
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            // 응답 데이터를 Blob으로 변환하고 이미지 MIME 타입인지 검증
+            const blob = await response.blob();
+            if (!blob.type.startsWith('image/')) throw new Error('파일이 이미지 형식이 아닙니다.');
+            // 페이지 좌상단 기준 상대 좌표(event.clientX - bounds.left, event.clientY - bounds.top)에 이미지를 삽입
+            await window.NoteDrawing.addLibraryImage(
+                blob,
+                pageNumber,
+                event.clientX - bounds.left,
+                event.clientY - bounds.top
+            );
+        } catch (error) {
+            // 요청 실패, 잘못된 형식, 삽입 오류 발생
+            saveState.textContent = '파일함 이미지를 삽입하지 못했습니다';
+            console.error('파일함 이미지 드롭 실패', error);
+            alert('파일함 이미지를 노트에 삽입하지 못했습니다. 이미지 파일인지 확인해 주세요.');
+        }
     });
 
     // drawing.js에서 판서 변경 이벤트가 발생하면 자동 저장 예약

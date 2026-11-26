@@ -9,6 +9,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.multipart.MultipartFile;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
@@ -108,6 +110,10 @@ public class FileService {
 
         // 2. 각 파일의 용량을 보기 편한 문자열(KB, MB 등)로 변환
         for (Map<String, Object> file : fileList) {
+            // 노트에 이미지 파일 올리기
+            String originalName = String.valueOf(file.get("fileName"));
+            file.put("imageFile", isSupportedImageName(originalName));
+            file.put("pdfFile", originalName.toLowerCase(java.util.Locale.ROOT).endsWith(".pdf"));
             Object sizeObj = file.get("fileSize");
             if (sizeObj != null) {
                 // DB 종류나 드라이버에 따라 Long 또는 Integer로 반환될 수 있으므로 Number로 안전하게 캐스팅
@@ -183,8 +189,19 @@ public class FileService {
         }
 
         String originalName = file.getOriginalFilename();
-        if (originalName == null || !originalName.toLowerCase().endsWith(".pdf")) {
-            throw new IllegalArgumentException("PDF 파일만 업로드할 수 있습니다.");
+        boolean isPdf = originalName != null && originalName.toLowerCase(java.util.Locale.ROOT).endsWith(".pdf");
+        boolean isImage = isSupportedImageName(originalName);
+        if (!isPdf && !isImage) {
+            throw new IllegalArgumentException("PDF, PNG, JPG, JPEG, GIF 파일만 업로드할 수 있습니다.");
+        }
+        if (isImage) {
+            try (var input = file.getInputStream()) {
+                BufferedImage decoded = ImageIO.read(input);
+                if (decoded == null || decoded.getWidth() > 12000 || decoded.getHeight() > 12000
+                        || (long) decoded.getWidth() * decoded.getHeight() > 40000000L) {
+                    throw new IllegalArgumentException("유효한 PNG, JPG, GIF 이미지 파일을 선택해 주세요.");
+                }
+            }
         }
 
         String safeName = Paths.get(originalName).getFileName().toString().replaceAll("[^가-힣a-zA-Z0-9._-]", "_");
@@ -215,6 +232,12 @@ public class FileService {
         }
         log.info("파일 저장 완료: {} ({} bytes)", destination, file.getSize());
         return safeName;
+    }
+
+    public static boolean isSupportedImageName(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif");
     }
 
     // 다운로드할 파일의 물리적 위치와 원본 이름을 안전하게 포장해서 서비스 레이어 밖(컨트롤러 등)으로 전달하기 위한 레코드(Record) 기반의 보안 파일 조회 구조

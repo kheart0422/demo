@@ -13,6 +13,8 @@
             opacity: 1;
             cursor: pointer;
         }
+        .file-image-draggable { cursor: grab; }
+        .file-image-draggable:active { cursor: grabbing; }
     </style>
 </head>
 <body class="bg-body-tertiary">
@@ -23,7 +25,7 @@
             <button type="button" id="myNote" class="btn btn-outline-primary" onclick="location.href='${pageContext.request.contextPath}/note'">내 노트</button>
             <form action="${pageContext.request.contextPath}/main/upload" method="post" enctype="multipart/form-data" id="uploadForm" class="m-0">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
-                <input id="fileInput" class="d-none" type="file" name="file" accept=".pdf,application/pdf" required>
+                <input id="fileInput" class="d-none" type="file" name="file" accept=".pdf,application/pdf,.png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif" required>
                 <label class="btn btn-primary" for="fileInput">파일 업로드</label>
             </form>
             <form action="${pageContext.request.contextPath}/logout" method="post" class="m-0">
@@ -79,7 +81,7 @@
                 <c:when test="${empty files}"><tr><td colspan="4" class="text-center text-body-secondary py-5">업로드한 파일이 없습니다.</td></tr></c:when>
                 <c:otherwise>
                     <c:forEach var="file" items="${files}">
-                        <tr>
+                        <tr data-file-id="${file.fileId}" data-image-file="${file.imageFile}">
                             <c:url var="downloadUrl" value="/main/download">
                                 <c:param name="fileSaveName" value="${file.fileSaveName}" />
                             </c:url>
@@ -89,11 +91,11 @@
                             <c:url var="noteUrl" value="/note">
                                 <c:param name="fileId" value="${file.fileId}" />
                             </c:url>
-                            <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a></td>
+                            <td class="ps-3 ps-md-4 fw-medium"><a href="${downloadUrl}" class="link-dark text-decoration-none"><c:out value="${file.fileName}" /></a><c:if test="${file.imageFile}"><span class="badge text-bg-light border ms-2">이미지 · 노트로 드래그</span></c:if></td>
                             <td class="text-body-secondary"><c:out value="${file.fileSize}" /></td>
                             <td class="text-body-secondary"><c:out value="${file.fileUploadDate}" /></td>
-                            <td><a id="previewBtn" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></td>
-                            <td><a id="fileForNote" class="btn btn-outline-primary btn-sm" href="${noteUrl}">내 노트로 이동하기</a></td>
+                            <td><c:if test="${file.pdfFile}"><a id="previewBtn" class="btn btn-outline-primary btn-sm" href="${previewUrl}#page=1" target="_blank" rel="noopener noreferrer">미리보기</a></c:if></td>
+                            <td><c:if test="${file.pdfFile}"><a id="fileForNote" class="btn btn-outline-primary btn-sm" href="${noteUrl}">내 노트로 이동하기</a></c:if></td>
                         </tr>
                     </c:forEach>
                 </c:otherwise>
@@ -213,13 +215,24 @@
         if (!file) return;
 
         // accept 속성은 파일 선택창의 안내이므로, 선택 후에도 확장자를 확인합니다.
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            alert('PDF 파일만 업로드할 수 있습니다.');
+        if (!/\.(pdf|png|jpe?g|gif)$/i.test(file.name)) {
+            alert('PDF, PNG, JPG, JPEG, GIF 파일만 업로드할 수 있습니다.');
             this.value = '';
             return;
         }
 
         document.getElementById('uploadForm').requestSubmit();
+    });
+
+    document.querySelectorAll('tr[data-image-file="true"]').forEach(function (row) {
+        row.draggable = true;
+        row.classList.add('file-image-draggable');
+        row.querySelectorAll('a').forEach(function (link) { link.draggable = false; });
+        row.addEventListener('dragstart', function (event) {
+            event.dataTransfer.setData('application/x-web-note-image', row.dataset.fileId);
+            event.dataTransfer.setData('text/plain', 'web-note-image:' + row.dataset.fileId);
+            event.dataTransfer.effectAllowed = 'copy';
+        });
     });
 </script>
 </body>

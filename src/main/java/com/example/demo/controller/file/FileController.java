@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
@@ -66,7 +67,7 @@ public class FileController {
                     .filename(file.originalName(), StandardCharsets.UTF_8)
                     .build();
             return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentType(mediaTypeForName(file.originalName()))
                     .contentLength(Files.size(file.path()))
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                     .body(new FileSystemResource(file.path()));
@@ -77,6 +78,18 @@ public class FileController {
             log.error("파일 다운로드 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // 500 err
         }
+    }
+
+    // 파일명을 기반으로 적절한 HTTP MediaType(MIME 타입)을 반환합니다.
+    private MediaType mediaTypeForName(String name) {
+        // null 안전성을 확보하고, 시스템 로케일 차이에 의한 대소문자 변환 문제를 피하기 위해 ROOT 로케일로 소문자 변환합니다.
+        String lower = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+        // 확장자별 MediaType을 매핑합니다.
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (lower.endsWith(".gif")) return MediaType.parseMediaType("image/gif");
+        // 지원하지 않는 확장자이거나 파일명이 없는 경우 기본값으로 PDF 타입을 반환합니다.
+        return MediaType.APPLICATION_PDF;
     }
 
     @GetMapping("/main/preview")

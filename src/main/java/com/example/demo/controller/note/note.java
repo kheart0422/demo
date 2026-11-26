@@ -202,9 +202,13 @@ public class note {
         if (request == null || request.strokes() == null || !request.strokes().isArray()) {
             return ResponseEntity.badRequest().body("판서 데이터 형식이 올바르지 않습니다.");
         }
+        if (request.images() != null && !request.images().isArray()) {
+            return ResponseEntity.badRequest().body("이미지 데이터 형식이 올바르지 않습니다.");
+        }
         if (!isOwnedNotePage(userDetails.getUsername(), noteId, pageNumber)) return ResponseEntity.notFound().build();
         ObjectNode pageData = objectMapper.createObjectNode();
         pageData.set("strokes", request.strokes());
+        pageData.set("images", request.images() == null ? objectMapper.createArrayNode() : request.images());
         pageData.put("text", request.text() == null ? "" : request.text());
         String pageJson = objectMapper.writeValueAsString(pageData);
         return noteService.savePageStrokes(userDetails.getUsername(), noteId, pageNumber, pageJson)
@@ -254,7 +258,7 @@ public class note {
 
     public record CreateNoteRequest(Long fileId) { }
     public record NoteRequest(String title) { }
-    public record PageStrokesRequest(JsonNode strokes, String text) { }
+    public record PageStrokesRequest(JsonNode strokes, String text, JsonNode images) { }
     public record PageAddedResponse(int pageNumber) { }
     public record NoteResponse(long noteId, Long fileId, String title, String writing,
                                JsonNode strokes, int pageCount) { }

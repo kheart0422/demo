@@ -9,10 +9,32 @@
     const canvases = new Map();
     // 페이지 번호별 필기 데이터 관리
     const strokesByPage = new Map();
+    // 페이지 번호별 붙여넣기 이미지 관리
+    const imagesByPage = new Map();
+    const imageCache = new Map();
+    let selectedImage = null;
+    let imageInteraction = null;
 
     // 필기 데이터가 변경되었음을 다른 스크립트에 알리는 함수
     function notifyChange(pageNumber) {
         window.dispatchEvent(new CustomEvent('note:drawingchange', { detail: { pageNumber } }));
+    }
+
+    function setImageCursor(paper, canvas, cursor) {
+        const defaultCursor = mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : 'crosshair';
+        paper.style.cursor = cursor || '';
+        canvas.style.cursor = cursor || defaultCursor;
+        paper.querySelectorAll('.writing-area').forEach(area => { area.style.cursor = cursor || ''; });
+    }
+
+    function constrainImages(pageNumber, pageWidth, pageHeight) {
+        (imagesByPage.get(pageNumber) || []).forEach(item => {
+            const scale = Math.min(1, pageWidth / item.width, pageHeight / item.height);
+            item.width *= scale;
+            item.height *= scale;
+            item.x = Math.max(0, Math.min(pageWidth - item.width, item.x));
+            item.y = Math.max(0, Math.min(pageHeight - item.height, item.y));
+        });
     }
 
     // 저장된 필기 데이터를 이용해 캔버스를 다시 그리는 함수
@@ -24,6 +46,18 @@
         const rect = canvas.getBoundingClientRect();
         // 기존 그림 지우기
         ctx.clearRect(0, 0, rect.width, rect.height);
+        (imagesByPage.get(pageNumber) || []).forEach(item => {
+            let image = imageCache.get(item.dataUrl);
+            if (!image) {
+                image = new Image();
+                imageCache.set(item.dataUrl, image);
+                image.onload = () => redrawCanvas(canvas, pageNumber);
+                image.src = item.dataUrl;
+            }
+            if (image.complete && image.naturalWidth) {
+                ctx.drawImage(image, item.x, item.y, item.width, item.height);
+            }
+        });
         // 해당 페이지에 저장된 모든 필기 데이터를 순회
         (strokesByPage.get(pageNumber) || []).forEach(stroke => {
             if (!stroke.points.length) return;
@@ -52,6 +86,29 @@
             // 이전 캔버스 설정 복원
             ctx.restore();
         });
+        if (selectedImage?.pageNumber === pageNumber) {
+            const item = (imagesByPage.get(pageNumber) || [])[selectedImage.index];
+            if (item) {
+                const handleSize = 10;
+                ctx.save();
+                ctx.strokeStyle = '#5368df';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 3]);
+                ctx.strokeRect(item.x, item.y, item.width, item.height);
+                ctx.setLineDash([]);
+                [
+                    [item.x, item.y],
+                    [item.x + item.width, item.y],
+                    [item.x, item.y + item.height],
+                    [item.x + item.width, item.y + item.height]
+                ].forEach(([x, y]) => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+                    ctx.strokeRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+                });
+                ctx.restore();
+            }
+        }
     }
 
     // 페이지 크기에 맞춰 캔버스 크기를 조정하는 함수
@@ -60,6 +117,8 @@
         if (!canvas.isConnected) return;
         // 캔버스를 포함하는 종이 영역의 크기 가져오기
         const rect = canvas.closest('.paper').getBoundingClientRect();
+        const pageNumber = Number(canvas.dataset.pageNumber);
+        constrainImages(pageNumber, rect.width, rect.height);
         // 고해상도 화면을 위한 배율 설정
         const ratio = window.devicePixelRatio || 1;
         // 캔버스 내부 해상도 설정
@@ -71,7 +130,7 @@
         // 화면 배율에 맞게 그리기 좌표 조정
         canvas.getContext('2d').setTransform(ratio, 0, 0, ratio, 0, 0);
         // 크기 조정 후 기존 필기 다시 그리기
-        redrawCanvas(canvas, Number(canvas.dataset.pageNumber));
+        redrawCanvas(canvas, pageNumber);
     }
 
     // 포인터 위치를 캔버스 기준 좌표로 변환하는 함수
@@ -85,6 +144,48 @@
         };
     }
 
+    async function addImageBlob(blob, options = {}) {
+        const pageNumber = Number(options.pageNumber ?? activePageNumber);
+        const canvas = canvases.get(pageNumber);
+        if (!canvas || !blob) return false;
+        const bitmap = await createImageBitmap(blob);
+        const paper = canvas.closest('.paper');
+        const rect = paper.getBoundingClientRect();
+        const fixedSize = Number(options.fixedSize || 0);
+        const scale = fixedSize
+            ? 1
+            : Math.min(1, (rect.width * 0.6) / bitmap.width, (rect.height * 0.5) / bitmap.height);
+        const width = fixedSize || Math.max(1, Math.round(bitmap.width * scale));
+        const height = fixedSize || Math.max(1, Math.round(bitmap.height * scale));
+        const imageCanvas = document.createElement('canvas');
+        imageCanvas.width = width;
+        imageCanvas.height = height;
+        const context = imageCanvas.getContext('2d');
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close?.();
+
+        if (!imagesByPage.has(pageNumber)) imagesByPage.set(pageNumber, []);
+        const x = Number.isFinite(options.x) ? options.x - width / 2 : (rect.width - width) / 2;
+        const y = Number.isFinite(options.y) ? options.y - height / 2 : (rect.height - height) / 2;
+        imagesByPage.get(pageNumber).push({
+            dataUrl: imageCanvas.toDataURL('image/jpeg', 0.82),
+            x: Math.max(0, Math.min(rect.width - width, Math.round(x))),
+            y: Math.max(0, Math.min(rect.height - height, Math.round(y))),
+            width,
+            height
+        });
+        activePageNumber = pageNumber;
+        selectedImage = { pageNumber, index: imagesByPage.get(pageNumber).length - 1 };
+        redrawCanvas(canvas, pageNumber);
+        notifyChange(pageNumber);
+        return true;
+    }
+
+    const addClipboardImage = blob => addImageBlob(blob);
+    const addLibraryImage = (blob, pageNumber, x, y) => addImageBlob(blob, { pageNumber, x, y, fixedSize: 45 });
+
     // 캔버스를 등록하고 필기 이벤트를 연결하는 함수
     function registerCanvas(canvas) {
         // 캔버스에 지정된 페이지 번호 가져오기
@@ -93,6 +194,114 @@
         canvases.set(pageNumber, canvas);
         // 해당 페이지의 필기 데이터가 없으면 빈 배열로 초기화
         if (!strokesByPage.has(pageNumber)) strokesByPage.set(pageNumber, []);
+        const paper = canvas.closest('.paper');
+        if (paper.dataset.imageInteractionBound !== 'true') {
+            paper.dataset.imageInteractionBound = 'true';
+            paper.addEventListener('pointerdown', event => {
+                const page = Number(canvas.dataset.pageNumber || 1);
+                const bounds = paper.getBoundingClientRect();
+                const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+                const images = imagesByPage.get(page) || [];
+                let hit = null;
+                for (let index = images.length - 1; index >= 0 && !hit; index--) {
+                    const item = images[index];
+                    const corners = [
+                        ['nw', item.x, item.y], ['ne', item.x + item.width, item.y],
+                        ['sw', item.x, item.y + item.height], ['se', item.x + item.width, item.y + item.height]
+                    ];
+                    const corner = corners.find(([, x, y]) => Math.abs(point.x - x) <= 10 && Math.abs(point.y - y) <= 10);
+                    if (corner) hit = { index, action: 'resize', handle: corner[0] };
+                    else if (point.x >= item.x && point.x <= item.x + item.width && point.y >= item.y && point.y <= item.y + item.height) {
+                        hit = { index, action: 'move' };
+                    }
+                }
+
+                activePageNumber = page;
+                if (!hit) {
+                    const previous = selectedImage;
+                    selectedImage = null;
+                    if (previous) redrawCanvas(canvases.get(previous.pageNumber), previous.pageNumber);
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                selectedImage = { pageNumber: page, index: hit.index };
+                const item = images[hit.index];
+                imageInteraction = {
+                    pointerId: event.pointerId,
+                    pageNumber: page,
+                    index: hit.index,
+                    action: hit.action,
+                    handle: hit.handle,
+                    startX: point.x,
+                    startY: point.y,
+                    original: { x: item.x, y: item.y, width: item.width, height: item.height }
+                };
+                paper.setPointerCapture(event.pointerId);
+                window.NoteDrawing?.setActivePage(page);
+                redrawCanvas(canvas, page);
+            }, true);
+
+            paper.addEventListener('pointermove', event => {
+                if (!imageInteraction) {
+                    const bounds = paper.getBoundingClientRect();
+                    const x = event.clientX - bounds.left;
+                    const y = event.clientY - bounds.top;
+                    const images = imagesByPage.get(Number(canvas.dataset.pageNumber || 1)) || [];
+                    let cursor = '';
+                    for (let index = images.length - 1; index >= 0 && !cursor; index--) {
+                        const item = images[index];
+                        const corners = [
+                            ['nwse-resize', item.x, item.y], ['nesw-resize', item.x + item.width, item.y],
+                            ['nesw-resize', item.x, item.y + item.height], ['nwse-resize', item.x + item.width, item.y + item.height]
+                        ];
+                        const corner = corners.find(([, cx, cy]) => Math.abs(x - cx) <= 10 && Math.abs(y - cy) <= 10);
+                        if (corner) cursor = corner[0];
+                        else if (x >= item.x && x <= item.x + item.width && y >= item.y && y <= item.y + item.height) cursor = 'move';
+                    }
+                    setImageCursor(paper, canvas, cursor);
+                    return;
+                }
+                if (event.pointerId !== imageInteraction.pointerId) return;
+                event.preventDefault();
+                const bounds = paper.getBoundingClientRect();
+                const dx = event.clientX - bounds.left - imageInteraction.startX;
+                const dy = event.clientY - bounds.top - imageInteraction.startY;
+                const item = (imagesByPage.get(imageInteraction.pageNumber) || [])[imageInteraction.index];
+                if (!item) return;
+                const original = imageInteraction.original;
+                if (imageInteraction.action === 'move') {
+                    item.x = Math.max(0, Math.min(bounds.width - original.width, original.x + dx));
+                    item.y = Math.max(0, Math.min(bounds.height - original.height, original.y + dy));
+                } else {
+                    const handle = imageInteraction.handle;
+                    const sx = handle.includes('w') ? -1 : 1;
+                    const sy = handle.includes('n') ? -1 : 1;
+                    let factor = Math.max(40 / original.width, 1 + ((dx * sx / original.width) + (dy * sy / original.height)) / 2);
+                    const maxWidth = sx < 0 ? original.x + original.width : bounds.width - original.x;
+                    const maxHeight = sy < 0 ? original.y + original.height : bounds.height - original.y;
+                    factor = Math.min(factor, maxWidth / original.width, maxHeight / original.height);
+                    item.width = original.width * factor;
+                    item.height = original.height * factor;
+                    item.x = sx < 0 ? original.x + original.width - item.width : original.x;
+                    item.y = sy < 0 ? original.y + original.height - item.height : original.y;
+                }
+                redrawCanvas(canvas, imageInteraction.pageNumber);
+            }, true);
+
+            const endImageInteraction = event => {
+                if (!imageInteraction || event.pointerId !== imageInteraction.pointerId) return;
+                const page = imageInteraction.pageNumber;
+                imageInteraction = null;
+                notifyChange(page);
+            };
+            paper.addEventListener('pointerup', endImageInteraction, true);
+            paper.addEventListener('pointercancel', endImageInteraction, true);
+            paper.addEventListener('pointerleave', () => {
+                if (!imageInteraction) setImageCursor(paper, canvas, '');
+            });
+        }
         // 이벤트가 중복 등록되지 않은 경우에만 실행
         if (canvas.dataset.drawingBound !== 'true') {
             canvas.dataset.drawingBound = 'true';
@@ -233,6 +442,19 @@
         }
     });
 
+    document.addEventListener('keydown', event => {
+        if (!selectedImage || (event.key !== 'Delete' && event.key !== 'Backspace')) return;
+        if (event.target instanceof Element && event.target.closest('input, textarea, select')) return;
+        const { pageNumber, index } = selectedImage;
+        const images = imagesByPage.get(pageNumber) || [];
+        if (!images[index]) return;
+        event.preventDefault();
+        images.splice(index, 1);
+        selectedImage = null;
+        redrawCanvas(canvases.get(pageNumber), pageNumber);
+        notifyChange(pageNumber);
+    });
+
     // 브라우저 창 크기가 변경되면 모든 캔버스 크기 조정
     window.addEventListener('resize', () => canvases.forEach(resizeCanvas));
     // 다른 JavaScript 파일에서도 사용할 수 있도록 NoteDrawing 객체 공개
@@ -241,6 +463,9 @@
         resetPages: () => {
             canvases.clear();
             strokesByPage.clear();
+            imagesByPage.clear();
+            selectedImage = null;
+            imageInteraction = null;
             // 활성 페이지를 1페이지로 초기화
             activePageNumber = 1;
             // 모든 필기 캔버스 등록
@@ -252,10 +477,14 @@
         registerCanvas,
         // 현재 캔버스의 페이지 번호 변경
         setPageNumber: pageNumber => {
-            const canvas = canvases.get(activePageNumber);
-            // 기존 페이지 번호로 등록된 캔버스 연결 제거
-            if (canvas) canvases.delete(activePageNumber);
+            const canvas = canvases.get(activePageNumber)
+                || (canvases.size === 1 ? canvases.values().next().value : null);
+            selectedImage = null;
+            imageInteraction = null;
             if (canvas) {
+                for (const [registeredPage, registeredCanvas] of canvases) {
+                    if (registeredCanvas === canvas) canvases.delete(registeredPage);
+                }
                 // 캔버스의 페이지 번호 변경
                 canvas.dataset.pageNumber = String(pageNumber);
                 // 새로운 페이지 번호로 캔버스 등록
@@ -272,6 +501,7 @@
         // 지정한 페이지의 필기 데이터 반환
         // 페이지 번호를 생략하면 현재 페이지의 데이터 반환
         getStrokes: pageNumber => strokesByPage.get(pageNumber ?? activePageNumber) || [],
+        getImages: pageNumber => imagesByPage.get(pageNumber ?? activePageNumber) || [],
         // 필기 데이터가 등록된 페이지 번호 목록 반환
         getPageNumbers: () => [...strokesByPage.keys()],
         // 외부에서 전달받은 필기 데이터로 페이지 데이터 교체
@@ -282,6 +512,18 @@
             // 변경된 필기 데이터를 캔버스에 반영
             if (canvas) redrawCanvas(canvas, pageNumber);
         },
+        setImages: (value, pageNumber = activePageNumber) => {
+            imagesByPage.set(pageNumber, Array.isArray(value) ? value : []);
+            if (selectedImage?.pageNumber === pageNumber) selectedImage = null;
+            const canvas = canvases.get(pageNumber);
+            if (canvas) {
+                const bounds = canvas.closest('.paper').getBoundingClientRect();
+                constrainImages(pageNumber, bounds.width, bounds.height);
+            }
+            if (canvas) redrawCanvas(canvas, pageNumber);
+        },
+        addClipboardImage,
+        addLibraryImage,
         // 지정한 페이지의 필기 데이터 전체 삭제
         // 페이지 번호를 생략하면 현재 페이지 삭제
         clear: (pageNumber = activePageNumber) => {
@@ -292,8 +534,11 @@
         },
         // 모든 페이지의 필기 데이터를 전체 삭제
         clearAll: () => {
+            selectedImage = null;
+            imageInteraction = null;
             strokesByPage.forEach((_, pageNumber) => {
                 strokesByPage.set(pageNumber, []);
+                imagesByPage.set(pageNumber, []);
                 redrawCanvas(canvases.get(pageNumber), pageNumber);
             });
         },
